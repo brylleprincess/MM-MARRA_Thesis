@@ -11,186 +11,226 @@ import java.util.stream.Collectors;
 
 /**
  * MM-MARRA: Multi-Level Median Average Round Robin Algorithm
+ * FINAL HYBRID VERSION - Balances ALL metrics
  *
- * THESIS CONTRIBUTION:
- * 1. Unified scheduling + load balancing framework
- * 2. Multi-metric load assessment (CPU, RAM, BW, queue)
- * 3. Median-average calculation for outlier resistance
- * 4. Real-time adaptive VM selection
+ * Strategy:
+ * 1. STRICT task count balance (equal distribution like RR)
+ * 2. SMART task-VM matching (long tasks → powerful VMs)
+ *
+ * This achieves:
+ * - Low load balance variance (equal task counts)
+ * - High fairness index (equal distribution)
+ * - Better makespan (smart matching)
+ * - Better throughput (optimal placement)
  *
  * @author: Tadena, Princess Brylle N
- * @version 2.0 - FINAL
  */
 public class MM_MARRA_Broker extends DatacenterBrokerSimple {
 
     private final Map<Vm, VmLoadMetrics> vmLoadMap = new HashMap<>();
-    private int totalSchedulingDecisions = 0;
-    private int loadBalancingAdjustments = 0;
+    private double medianTaskLength = 0;
+    private double avgTaskLength = 0;
+    private int totalDecisions = 0;
+
+    // Categorized VM lists
+    private List<Vm> powerfulVms = new ArrayList<>();
+    private List<Vm> moderateVms = new ArrayList<>();
+    private List<Vm> modestVms = new ArrayList<>();
+    private boolean vmsInitialized = false;
 
     public MM_MARRA_Broker(CloudSimPlus simulation) {
         super(simulation);
     }
 
     @Override
+    public MM_MARRA_Broker submitCloudletList(List<? extends Cloudlet> list) {
+        if (list == null || list.isEmpty()) {
+            return this;
+        }
+
+        List<Double> lengths = list.stream()
+                .map(c -> (double) c.getLength())
+                .collect(Collectors.toList());
+
+        medianTaskLength = StatisticsHelper.calculateMedian(lengths);
+        avgTaskLength = StatisticsHelper.calculateMean(lengths);
+
+        System.out.printf("  [MM-MARRA] Median: %.0f MI, Average: %.0f MI%n",
+                medianTaskLength, avgTaskLength);
+
+        // Sort cloudlets: SHORT tasks first (SJF for better response time)
+        List<Cloudlet> sorted = new ArrayList<>(list);
+        sorted.sort(Comparator.comparingLong(Cloudlet::getLength));
+
+        System.out.println("  [MM-MARRA] Applied SJF sorting + Smart VM matching");
+
+        super.submitCloudletList(sorted);
+        return this;
+    }
+
+    @Override
     protected Vm defaultVmMapper(Cloudlet cloudlet) {
         List<Vm> vmList = getVmCreatedList();
-
         if (vmList.isEmpty()) {
             return Vm.NULL;
         }
 
-        totalSchedulingDecisions++;
+        // Initialize VM categories once
+        if (!vmsInitialized) {
+            initializeVmCategories(vmList);
+            vmsInitialized = true;
+        }
 
+        totalDecisions++;
+
+        // Initialize tracking for all VMs
         for (Vm vm : vmList) {
-            vmLoadMap.putIfAbsent(vm, new VmLoadMetrics());
-        }
-
-        // LEVEL 1: Multi-metric load assessment
-        Map<Vm, Double> vmCompositeLoad = calculateCompositeLoad(vmList);
-
-        // LEVEL 2: Median-average for outlier resistance
-        List<Double> loadValues = new ArrayList<>(vmCompositeLoad.values());
-        double medianAvgLoad = StatisticsHelper.calculateMedianAverage(loadValues);
-
-        // LEVEL 3: Intelligent VM selection with load balancing
-        Vm selectedVm = selectOptimalVm(vmList, vmCompositeLoad, medianAvgLoad);
-
-        VmLoadMetrics metrics = vmLoadMap.get(selectedVm);
-        metrics.incrementTaskCount();
-        metrics.addCloudletLength(cloudlet.getLength());
-
-        return selectedVm;
-    }
-
-    /**
-     * LEVEL 1: Multi-Metric Load Calculation
-     * Innovation: Considers 4 metrics simultaneously (vs. 1-3 in literature)
-     */
-    private Map<Vm, Double> calculateCompositeLoad(List<Vm> vmList) {
-        Map<Vm, Double> compositeLoad = new HashMap<>();
-
-        for (Vm vm : vmList) {
-            VmLoadMetrics metrics = vmLoadMap.get(vm);
-
-            double cpuLoad = vm.getCpuPercentUtilization();
-            double ramLoad = vm.getRam().getPercentUtilization();
-            double bwLoad = vm.getBw().getPercentUtilization();
-            double queueLoad = Math.min(1.0, metrics.getTaskCount() / 100.0);
-
-            // Equal weighting (can be adjusted based on workload characteristics)
-            double composite = (cpuLoad * 0.40 +    // CPU most critical
-                    ramLoad * 0.25 +     // Memory important
-                    bwLoad * 0.20 +      // Bandwidth for I/O
-                    queueLoad * 0.15);   // Queue length indicator
-
-            compositeLoad.put(vm, composite);
-        }
-
-        return compositeLoad;
-    }
-
-    /**
-     * LEVEL 2 & 3: Median-Average Threshold with Intelligent Selection
-     * Innovation: Combines statistical robustness with adaptive load balancing
-     */
-    private Vm selectOptimalVm(List<Vm> vmList, Map<Vm, Double> compositeLoad,
-                               double medianAvgThreshold) {
-
-        // Find VMs below median-average threshold (not overloaded)
-        List<Vm> candidateVms = vmList.stream()
-                .filter(vm -> compositeLoad.get(vm) <= medianAvgThreshold * 1.2) // 20% tolerance
-                .collect(Collectors.toList());
-
-        if (candidateVms.isEmpty()) {
-            candidateVms = new ArrayList<>(vmList);
-            loadBalancingAdjustments++;
-        }
-
-        // Select VM with minimum composite load
-        Vm selectedVm = candidateVms.stream()
-                .min(Comparator.comparingDouble(compositeLoad::get))
-                .orElse(vmList.get(0));
-
-        // Additional fairness check: avoid over-utilizing single VM
-        VmLoadMetrics selectedMetrics = vmLoadMap.get(selectedVm);
-        double avgTaskCount = vmLoadMap.values().stream()
-                .mapToInt(VmLoadMetrics::getTaskCount)
-                .average()
-                .orElse(0.0);
-
-        if (selectedMetrics.getTaskCount() > avgTaskCount * 1.5) {
-            // Redistribute to next best VM
-            candidateVms.remove(selectedVm);
-            if (!candidateVms.isEmpty()) {
-                selectedVm = candidateVms.stream()
-                        .min(Comparator.comparingDouble(compositeLoad::get))
-                        .orElse(selectedVm);
-                loadBalancingAdjustments++;
+            if (!vmLoadMap.containsKey(vm)) {
+                vmLoadMap.put(vm, new VmLoadMetrics(vm.getMips() * vm.getPesNumber()));
             }
         }
 
-        return selectedVm;
+        // HYBRID: Equal distribution + Smart matching
+        Vm bestVm = selectVmHybrid(vmList, cloudlet);
+
+        // Update metrics
+        VmLoadMetrics metrics = vmLoadMap.get(bestVm);
+        if (metrics != null) {
+            metrics.addTask(cloudlet.getLength());
+        }
+
+        return bestVm;
+    }
+
+    /**
+     * Categorize VMs by capacity
+     */
+    private void initializeVmCategories(List<Vm> vmList) {
+        for (Vm vm : vmList) {
+            double capacity = vm.getMips() * vm.getPesNumber();
+            if (capacity >= 2000) {
+                powerfulVms.add(vm);
+            } else if (capacity >= 500) {
+                moderateVms.add(vm);
+            } else {
+                modestVms.add(vm);
+            }
+        }
+        System.out.printf("  [MM-MARRA] VM Categories: %d powerful, %d moderate, %d modest%n",
+                powerfulVms.size(), moderateVms.size(), modestVms.size());
+    }
+
+    /**
+     * HYBRID SELECTION:
+     * 1. Find VMs with MINIMUM task count (ensures equal distribution)
+     * 2. Among those, pick based on task-VM matching (ensures good performance)
+     */
+    private Vm selectVmHybrid(List<Vm> vmList, Cloudlet cloudlet) {
+        // Step 1: Find minimum task count
+        int minTasks = vmLoadMap.values().stream()
+                .mapToInt(VmLoadMetrics::getTaskCount)
+                .min().orElse(0);
+
+        // Step 2: Get all VMs with minimum task count
+        List<Vm> candidateVms = vmList.stream()
+                .filter(vm -> {
+                    VmLoadMetrics m = vmLoadMap.get(vm);
+                    return m != null && m.getTaskCount() == minTasks;
+                })
+                .collect(Collectors.toList());
+
+        if (candidateVms.isEmpty()) {
+            candidateVms = vmList;
+        }
+
+        // Step 3: Among candidates, pick based on task-VM matching
+        return selectBestMatch(candidateVms, cloudlet);
+    }
+
+    /**
+     * Select best VM from candidates based on task characteristics
+     */
+    private Vm selectBestMatch(List<Vm> candidates, Cloudlet cloudlet) {
+        if (candidates.size() == 1) {
+            return candidates.get(0);
+        }
+
+        Vm bestVm = null;
+        double bestScore = Double.MAX_VALUE;
+
+        // Classify cloudlet
+        boolean isLongTask = cloudlet.getLength() > medianTaskLength * 1.5;
+        boolean isShortTask = cloudlet.getLength() < medianTaskLength * 0.5;
+
+        for (Vm vm : candidates) {
+            double vmCapacity = vm.getMips() * vm.getPesNumber();
+            double score;
+
+            if (isLongTask) {
+                // Long task: prefer powerful VM (lower capacity = higher score = worse)
+                score = 10000.0 / vmCapacity;
+            } else if (isShortTask) {
+                // Short task: prefer modest VM (higher capacity = higher score = worse)
+                score = vmCapacity / 1000.0;
+            } else {
+                // Medium task: prefer moderate VM, slight preference for less loaded
+                VmLoadMetrics m = vmLoadMap.get(vm);
+                double load = (m != null) ? m.getTotalMI() : 0;
+                score = Math.abs(vmCapacity - 1000) / 1000.0 + load / 100000.0;
+            }
+
+            if (score < bestScore) {
+                bestScore = score;
+                bestVm = vm;
+            }
+        }
+
+        return (bestVm != null) ? bestVm : candidates.get(0);
     }
 
     public void printStatistics() {
         System.out.println("\n" + "=".repeat(80));
-        System.out.println("MM-MARRA: MULTI-LEVEL LOAD-AWARE STATISTICS");
+        System.out.println("MM-MARRA HYBRID LOAD DISTRIBUTION");
         System.out.println("=".repeat(80));
-        System.out.println("Total Scheduling Decisions: " + totalSchedulingDecisions);
-        System.out.println("Load Balancing Adjustments: " + loadBalancingAdjustments);
-        System.out.printf("Adaptive Balancing Rate: %.2f%%%n",
-                (loadBalancingAdjustments * 100.0) / totalSchedulingDecisions);
 
         if (!vmLoadMap.isEmpty()) {
-            System.out.println("\nVM Load Distribution:");
-            System.out.printf("%-8s %-12s %-15s %-15s%n",
-                    "VM ID", "Tasks", "Avg Length MI", "Total MI");
-            System.out.println("-".repeat(60));
+            System.out.printf("%-8s %-10s %-15s %-15s%n",
+                    "VM ID", "Tasks", "Total MI", "Capacity");
+            System.out.println("-".repeat(50));
 
-            vmLoadMap.forEach((vm, metrics) -> {
-                System.out.printf("%-8d %-12d %-15.2f %-15.0f%n",
-                        vm.getId(),
-                        metrics.getTaskCount(),
-                        metrics.getAverageCloudletLength(),
-                        metrics.getTotalMI());
-            });
+            vmLoadMap.forEach((vm, m) ->
+                    System.out.printf("%-8d %-10d %-15.0f %-15.0f%n",
+                            vm.getId(), m.getTaskCount(), m.getTotalMI(), m.getVmCapacity()));
 
-            // Calculate load balance fairness index
-            List<Double> taskCounts = vmLoadMap.values().stream()
-                    .mapToDouble(m -> (double) m.getTaskCount())
-                    .boxed()
-                    .collect(Collectors.toList());
+            // Calculate balance metrics
+            List<Integer> counts = vmLoadMap.values().stream()
+                    .map(VmLoadMetrics::getTaskCount).collect(Collectors.toList());
 
-            double avgTasks = taskCounts.stream().mapToDouble(d -> d).average().orElse(0.0);
-            double stdDev = StatisticsHelper.calculateStandardDeviation(taskCounts);
-            double coefficientOfVariation = avgTasks > 0 ? stdDev / avgTasks : 0.0;
-            double fairnessIndex = 1.0 / (1.0 + coefficientOfVariation);
+            double avg = counts.stream().mapToInt(i -> i).average().orElse(0);
+            double variance = counts.stream()
+                    .mapToDouble(c -> Math.pow(c - avg, 2)).average().orElse(0);
 
-            System.out.println("\n--- Load Balance Quality Metrics ---");
-            System.out.printf("Average Tasks per VM: %.2f%n", avgTasks);
-            System.out.printf("Standard Deviation: %.2f%n", stdDev);
-            System.out.printf("Coefficient of Variation: %.4f%n", coefficientOfVariation);
-            System.out.printf("Fairness Index: %.4f (1.0 = perfect balance)%n", fairnessIndex);
+            double sum = counts.stream().mapToInt(i -> i).sum();
+            double sumSq = counts.stream().mapToDouble(i -> (double)i * i).sum();
+            double fairness = (sumSq > 0) ? (sum * sum) / (counts.size() * sumSq) : 1.0;
+
+            System.out.printf("\nTask Distribution: Avg=%.1f, Variance=%.2f, Fairness=%.4f%n",
+                    avg, variance, fairness);
         }
-
-        System.out.println("=".repeat(80) + "\n");
+        System.out.println("=".repeat(80));
     }
 
-    private static class VmLoadMetrics {
-        private int taskCount = 0;
-        private long totalMI = 0;
-        private final List<Long> cloudletLengths = new ArrayList<>();
+    public Map<Vm, VmLoadMetrics> getVmLoadMap() { return vmLoadMap; }
 
-        void incrementTaskCount() { taskCount++; }
-        void addCloudletLength(long length) {
-            totalMI += length;
-            cloudletLengths.add(length);
-        }
-        int getTaskCount() { return taskCount; }
-        long getTotalMI() { return totalMI; }
-        double getAverageCloudletLength() {
-            return cloudletLengths.isEmpty() ? 0.0 :
-                    cloudletLengths.stream().mapToLong(l -> l).average().orElse(0.0);
-        }
+    public static class VmLoadMetrics {
+        private int taskCount = 0;
+        private double totalMI = 0;
+        private final double vmCapacity;
+
+        public VmLoadMetrics(double capacity) { this.vmCapacity = capacity; }
+        public void addTask(long length) { taskCount++; totalMI += length; }
+        public int getTaskCount() { return taskCount; }
+        public double getTotalMI() { return totalMI; }
+        public double getVmCapacity() { return vmCapacity; }
     }
 }

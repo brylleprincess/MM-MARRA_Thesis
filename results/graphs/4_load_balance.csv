@@ -1,0 +1,5 @@
+Algorithm,Variance,FairnessIndex
+Traditional RR,7.84,0.9593
+MARR,8.69,0.9518
+MMRR,4.69,0.9763
+MM-MARRA,8.85,0.9464

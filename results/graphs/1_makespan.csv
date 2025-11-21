@@ -1,0 +1,5 @@
+Algorithm,Makespan
+Traditional RR,1451.33
+MARR,2568.98
+MMRR,4632.71
+MM-MARRA,426.07

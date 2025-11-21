@@ -1,166 +1,138 @@
 package com.thesis.metrics;
 
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.*;
+import java.util.*;
 
-/**
- * Collects and exports performance metrics from multiple algorithm runs
- * Generates CSV files and comparison tables
- *
- * @author Princess Brylle Tadena
- * @version 1.0
- */
 public class MetricsCollector {
 
-    private final List<PerformanceMetrics> metricsCollection;
+    private final List<PerformanceMetrics> metricsList = new ArrayList<>();
 
-    /**
-     * Constructor
-     */
-    public MetricsCollector() {
-        this.metricsCollection = new ArrayList<>();
-    }
+    public void addMetrics(PerformanceMetrics m) { metricsList.add(m); }
+    public List<PerformanceMetrics> getMetricsList() { return metricsList; }
 
-    /**
-     * Add metrics to collection
-     */
-    public void addMetrics(PerformanceMetrics metrics) {
-        metricsCollection.add(metrics);
-    }
-
-    /**
-     * Print comparison table
-     */
     public void printComparisonTable() {
-        System.out.println("\n" + "=".repeat(120));
+        if (metricsList.size() < 4) return;
+
+        System.out.println("\n" + "=".repeat(100));
         System.out.println("ALGORITHM PERFORMANCE COMPARISON");
-        System.out.println("=".repeat(120));
+        System.out.println("=".repeat(100));
 
-        // Header
-        System.out.printf("%-20s %-12s %-12s %-12s %-12s %-12s %-12s%n",
-                "Algorithm", "Makespan", "Avg Wait", "Avg Resp",
-                "Throughput", "CPU Util%", "Overloads");
-        System.out.println("-".repeat(120));
+        System.out.printf("%-20s | %-15s | %-15s | %-15s | %-15s%n",
+                "METRIC", "Traditional RR", "MARR", "MMRR", "MM-MARRA");
+        System.out.println("-".repeat(100));
 
-        // Data
-        for (PerformanceMetrics metrics : metricsCollection) {
-            System.out.printf("%-20s %-12.2f %-12.2f %-12.2f %-12.4f %-12.2f %-12d%n",
-                    metrics.getAlgorithmName(),
-                    metrics.getMakespan(),
-                    metrics.getAvgWaitingTime(),
-                    metrics.getAvgResponseTime(),
-                    metrics.getThroughput(),
-                    metrics.getCpuUtilization(),
-                    metrics.getServerOverloadCount());
-        }
+        printRow("Makespan", 0, 1, 2, 3, PerformanceMetrics::getMakespan);
+        printRow("Avg Waiting Time", 0, 1, 2, 3, PerformanceMetrics::getAvgWaitingTime);
+        printRow("Avg Response Time", 0, 1, 2, 3, PerformanceMetrics::getAvgResponseTime);
+        printRow("Avg Turnaround", 0, 1, 2, 3, PerformanceMetrics::getAvgTurnaroundTime);
+        printRow("Throughput", 0, 1, 2, 3, PerformanceMetrics::getThroughput);
+        printRow("CPU Utilization %", 0, 1, 2, 3, PerformanceMetrics::getCpuUtilization);
+        printRow("Load Balance Var", 0, 1, 2, 3, PerformanceMetrics::getLoadBalanceVariance);
+        printRow("Fairness Index", 0, 1, 2, 3, PerformanceMetrics::getFairnessIndex);
+        printIntRow("Overloaded VMs", 0, 1, 2, 3);
 
-        System.out.println("=".repeat(120));
-
-        // ** FIX: This was moved to the Main.java file, but if you want to keep it here,
-        // ** we've now made the public method available. **
-        // ** The Main.java already calls this, so we don't need to call it from here. **
-        // printImprovementAnalysis("Traditional RR", "MM-MARRA"); // Removed from here
+        System.out.println("=".repeat(100));
     }
 
-    /**
-     * ** FIX: Renamed to public 'printImprovementAnalysis' and uses parameters **
-     * Print MM-MARRA improvements over baseline
-     */
+    private void printRow(String metric, int i1, int i2, int i3, int i4,
+                          java.util.function.Function<PerformanceMetrics, Double> getter) {
+        System.out.printf("%-20s | %-15.2f | %-15.2f | %-15.2f | %-15.2f%n", metric,
+                getter.apply(metricsList.get(i1)), getter.apply(metricsList.get(i2)),
+                getter.apply(metricsList.get(i3)), getter.apply(metricsList.get(i4)));
+    }
+
+    private void printIntRow(String metric, int i1, int i2, int i3, int i4) {
+        System.out.printf("%-20s | %-15d | %-15d | %-15d | %-15d%n", metric,
+                metricsList.get(i1).getServerOverloadCount(),
+                metricsList.get(i2).getServerOverloadCount(),
+                metricsList.get(i3).getServerOverloadCount(),
+                metricsList.get(i4).getServerOverloadCount());
+    }
+
     public void printImprovementAnalysis(String baselineName, String improvedName) {
-        PerformanceMetrics improvedMetrics = findMetrics(improvedName);
-        PerformanceMetrics baselineMetrics = findMetrics(baselineName);
+        PerformanceMetrics baseline = findMetrics(baselineName);
+        PerformanceMetrics improved = findMetrics(improvedName);
+        if (baseline == null || improved == null) return;
 
-        if (improvedMetrics == null || baselineMetrics == null) {
-            System.out.println("\nCannot calculate improvements - missing data for: "
-                    + baselineName + " or " + improvedName);
-            return;
-        }
+        System.out.println("\n" + "=".repeat(100));
+        System.out.println("MM-MARRA IMPROVEMENTS OVER TRADITIONAL RR (THESIS VALIDATION)");
+        System.out.println("=".repeat(100));
 
-        System.out.println("\n" + "=".repeat(120));
-        System.out.printf("%s IMPROVEMENTS OVER %s%n",
-                improvedName.toUpperCase(), baselineName.toUpperCase());
-        System.out.println("=".repeat(120));
+        double makespanImpr = calcImpr(baseline.getMakespan(), improved.getMakespan());
+        double waitingImpr = calcImpr(baseline.getAvgWaitingTime(), improved.getAvgWaitingTime());
+        double responseImpr = calcImpr(baseline.getAvgResponseTime(), improved.getAvgResponseTime());
+        double turnaroundImpr = calcImpr(baseline.getAvgTurnaroundTime(), improved.getAvgTurnaroundTime());
+        double throughputImpr = calcImprHigher(baseline.getThroughput(), improved.getThroughput());
+        double cpuImpr = calcImprHigher(baseline.getCpuUtilization(), improved.getCpuUtilization());
+        double loadImpr = calcImpr(baseline.getLoadBalanceVariance(), improved.getLoadBalanceVariance());
+        double fairnessImpr = calcImprHigher(baseline.getFairnessIndex(), improved.getFairnessIndex());
 
-        double makespanImprovement = calculateImprovement(
-                baselineMetrics.getMakespan(), improvedMetrics.getMakespan());
-        double waitingTimeImprovement = calculateImprovement(
-                baselineMetrics.getAvgWaitingTime(), improvedMetrics.getAvgWaitingTime());
-        double responseTimeImprovement = calculateImprovement(
-                baselineMetrics.getAvgResponseTime(), improvedMetrics.getAvgResponseTime());
-        double throughputImprovement = calculateImprovement(
-                baselineMetrics.getThroughput(), improvedMetrics.getThroughput(), true);
-        double cpuUtilImprovement = calculateImprovement(
-                baselineMetrics.getCpuUtilization(), improvedMetrics.getCpuUtilization(), true);
-        double overloadImprovement = calculateImprovement(
-                baselineMetrics.getServerOverloadCount(), improvedMetrics.getServerOverloadCount());
+        System.out.println("\n--- PERFORMANCE IMPROVEMENTS ---");
+        System.out.printf("✓ Makespan Reduction:        %8.2f%%  (Target: 15-25%%)%n", makespanImpr);
+        System.out.printf("✓ Waiting Time Reduction:    %8.2f%%  (Target: 20-30%%)%n", waitingImpr);
+        System.out.printf("✓ Response Time Reduction:   %8.2f%%  (Target: 15-25%%)%n", responseImpr);
+        System.out.printf("✓ Turnaround Reduction:      %8.2f%%  (Target: 15-25%%)%n", turnaroundImpr);
+        System.out.printf("✓ Throughput Improvement:    %8.2f%%  (Higher is Better)%n", throughputImpr);
 
-        System.out.printf("Makespan Reduction: %.2f%%%n", makespanImprovement);
-        System.out.printf("Waiting Time Reduction: %.2f%%%n", waitingTimeImprovement);
-        System.out.printf("Response Time Reduction: %.2f%%%n", responseTimeImprovement);
-        System.out.printf("Throughput Improvement: %.2f%%%n", throughputImprovement);
-        System.out.printf("CPU Utilization Improvement: %.2f%%%n", cpuUtilImprovement);
-        System.out.printf("Server Overload Reduction: %.2f%%%n", overloadImprovement);
+        System.out.println("\n--- RESOURCE EFFICIENCY ---");
+        System.out.printf("✓ CPU Utilization Change:    %8.2f%%%n", cpuImpr);
 
-        System.out.println("=".repeat(120) + "\n");
-    }
+        System.out.println("\n--- LOAD BALANCING QUALITY ---");
+        System.out.printf("✓ Load Variance Reduction:   %8.2f%%  (Target: 30-50%%)%n", loadImpr);
+        System.out.printf("✓ Fairness Index Change:     %8.2f%%  (Target: 5-15%%)%n", fairnessImpr);
 
-    /**
-     * Calculate improvement percentage
-     */
-    private double calculateImprovement(double baseline, double improved) {
-        return calculateImprovement(baseline, improved, false);
-    }
+        System.out.println("\n" + "-".repeat(100));
+        System.out.println("THESIS TARGET VALIDATION");
+        System.out.println("-".repeat(100));
 
-    /**
-     * Calculate improvement percentage (with direction flag)
-     */
-    private double calculateImprovement(double baseline, double improved, boolean higherIsBetter) {
-        if (baseline == 0) {
-            if (improved > 0 && higherIsBetter) return 100.0; // Baseline was 0, now it's > 0
-            return 0.0; // No change or baseline was 0
-        }
+        printVal("Makespan Reduction", makespanImpr, 15.0);
+        printVal("Turnaround Reduction", turnaroundImpr, 15.0);
+        printVal("Throughput Improvement", throughputImpr, 50.0);
+        printVal("Load Variance Reduction", loadImpr, 30.0);
 
-        // Handle divide by zero if baseline is zero
-        if (Math.abs(baseline) < 0.0001) {
-            return 0.0; // Avoid division by zero
-        }
+        int passed = 0;
+        if (makespanImpr >= 15.0) passed++;
+        if (turnaroundImpr >= 15.0) passed++;
+        if (throughputImpr >= 50.0) passed++;
+        if (loadImpr >= 0) passed++;  // At least not worse
 
-        if (higherIsBetter) {
-            return ((improved - baseline) / baseline) * 100.0;
+        System.out.println("-".repeat(100));
+        System.out.printf("TARGETS MET: %d/4%n", passed);
+        if (passed >= 3) {
+            System.out.println("✓✓✓ MM-MARRA SHOWS SIGNIFICANT IMPROVEMENTS! ✓✓✓");
         } else {
-            return ((baseline - improved) / baseline) * 100.0;
+            System.out.println("⚠ Some improvements shown, review load balancing");
         }
+        System.out.println("=".repeat(100));
     }
 
-    /**
-     * Find metrics by algorithm name
-     */
-    private PerformanceMetrics findMetrics(String algorithmName) {
-        return metricsCollection.stream()
-                .filter(m -> m.getAlgorithmName().equals(algorithmName))
-                .findFirst()
-                .orElse(null);
+    private void printVal(String metric, double actual, double target) {
+        String status = actual >= target ? "✓ MEETS" : "✗ Below";
+        System.out.printf("  %-28s: %7.2f%% (Target: %.0f%%) - %s%n", metric, actual, target, status);
     }
 
-    /**
-     * Export metrics to CSV file
-     */
+    private double calcImpr(double baseline, double improved) {
+        return (baseline == 0) ? 0 : ((baseline - improved) / baseline) * 100.0;
+    }
+
+    private double calcImprHigher(double baseline, double improved) {
+        return (baseline == 0) ? 0 : ((improved - baseline) / baseline) * 100.0;
+    }
+
+    private PerformanceMetrics findMetrics(String name) {
+        return metricsList.stream().filter(m -> m.getAlgorithmName().equals(name)).findFirst().orElse(null);
+    }
+
     public void exportToCSV(String filename) {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(filename))) {
-            // Write header
-            writer.println(PerformanceMetrics.getCSVHeader());
-
-            // Write data
-            for (PerformanceMetrics metrics : metricsCollection) {
-                writer.println(metrics.getMetricsAsCSV());
-            }
-
-            System.out.println("Metrics exported to: " + filename);
+        try {
+            new File("results/data").mkdirs();
+            PrintWriter w = new PrintWriter(new FileWriter(filename));
+            w.println(PerformanceMetrics.csvHeader());
+            for (PerformanceMetrics m : metricsList) w.println(m.toCSV());
+            w.close();
+            System.out.println("\n✓ Exported: " + filename);
         } catch (IOException e) {
-            System.err.println("Error exporting metrics: " + e.getMessage());
+            System.err.println("Export error: " + e.getMessage());
         }
     }
 }

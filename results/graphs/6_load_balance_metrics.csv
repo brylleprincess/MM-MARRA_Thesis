@@ -1,0 +1,5 @@
+Algorithm,Load Variance,Std Deviation,Fairness Index
+Traditional RR,0.0000,0.0000,1.0000
+MARR,0.0000,0.0000,1.0000
+MMRR,0.0000,0.0000,1.0000
+MM-MARRA,15.8000,3.9749,0.9344

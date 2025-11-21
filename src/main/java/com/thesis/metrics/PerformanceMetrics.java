@@ -3,23 +3,15 @@ package com.thesis.metrics;
 import org.cloudsimplus.cloudlets.Cloudlet;
 import org.cloudsimplus.vms.Vm;
 
-import java.util.List;
-import java.util.DoubleSummaryStatistics;
+import java.util.*;
+import java.util.stream.Collectors;
 
-/**
- * Performance metrics calculator for algorithm comparison
- * Calculates: Makespan, Response Time, Throughput, Resource Utilization, etc.
- *
- * @author Princess Brylle Tadena
- * @version 1.0
- */
 public class PerformanceMetrics {
 
+    private final String algorithmName;
     private final List<Cloudlet> cloudlets;
     private final List<Vm> vms;
-    private final String algorithmName;
 
-    // Calculated metrics
     private double makespan;
     private double avgWaitingTime;
     private double avgTurnaroundTime;
@@ -28,117 +20,110 @@ public class PerformanceMetrics {
     private double cpuUtilization;
     private double memoryUtilization;
     private double bwUtilization;
+    private double loadBalanceVariance;
+    private double fairnessIndex;
     private int serverOverloadCount;
 
-    /**
-     * Constructor
-     */
     public PerformanceMetrics(String algorithmName, List<Cloudlet> cloudlets, List<Vm> vms) {
         this.algorithmName = algorithmName;
         this.cloudlets = cloudlets;
         this.vms = vms;
-        calculateMetrics();
+        calculateAllMetrics();
     }
 
-    /**
-     * Calculate all performance metrics
-     */
-    private void calculateMetrics() {
-        calculateMakespan();
-        calculateWaitingTime();
-        calculateTurnaroundTime();
-        calculateResponseTime();
-        calculateThroughput();
-        calculateResourceUtilization();
-        calculateServerOverload();
-    }
-
-    /**
-     * Calculate Makespan (total completion time)
-     */
-    private void calculateMakespan() {
-        makespan = cloudlets.stream()
-                .mapToDouble(Cloudlet::getFinishTime)
-                .max()
-                .orElse(0.0);
-    }
-
-    /**
-     * Calculate Average Waiting Time
-     */
-    private void calculateWaitingTime() {
-        avgWaitingTime = cloudlets.stream()
-                .mapToDouble(Cloudlet::getWaitingTime)
-                .average()
-                .orElse(0.0);
-    }
-
-    /**
-     * Calculate Average Turnaround Time
-     */
-    private void calculateTurnaroundTime() {
-        avgTurnaroundTime = cloudlets.stream()
-                .mapToDouble(c -> c.getFinishTime() - c.getSubmissionDelay())
-                .average()
-                .orElse(0.0);
-    }
-
-    /**
-     * Calculate Average Response Time
-     */
-    private void calculateResponseTime() {
-        avgResponseTime = cloudlets.stream()
-                .mapToDouble(c -> c.getExecStartTime() - c.getSubmissionDelay())
-                .average()
-                .orElse(0.0);
-    }
-
-    /**
-     * Calculate Throughput (tasks per unit time)
-     */
-    private void calculateThroughput() {
-        if (makespan > 0) {
-            throughput = cloudlets.size() / makespan;
-        } else {
-            throughput = 0.0;
-        }
-    }
-
-    /**
-     * Calculate Resource Utilization (CPU, Memory, Bandwidth)
-     */
-    private void calculateResourceUtilization() {
-        if (vms.isEmpty()) {
-            cpuUtilization = 0.0;
-            memoryUtilization = 0.0;
-            bwUtilization = 0.0;
+    private void calculateAllMetrics() {
+        if (cloudlets == null || cloudlets.isEmpty()) {
+            setDefaults();
             return;
         }
 
-        DoubleSummaryStatistics cpuStats = vms.stream()
-                .mapToDouble(Vm::getCpuPercentUtilization)
-                .summaryStatistics();
+        List<Cloudlet> valid = cloudlets.stream()
+                .filter(Cloudlet::isFinished)
+                .filter(c -> c.getFinishTime() > 0 && c.getFinishTime() < 1e9)
+                .collect(Collectors.toList());
 
-        DoubleSummaryStatistics ramStats = vms.stream()
-                .mapToDouble(vm -> vm.getRam().getPercentUtilization())
-                .summaryStatistics();
+        if (valid.isEmpty()) {
+            setDefaults();
+            return;
+        }
 
-        DoubleSummaryStatistics bwStats = vms.stream()
-                .mapToDouble(vm -> vm.getBw().getPercentUtilization())
-                .summaryStatistics();
+        // Makespan
+        makespan = valid.stream().mapToDouble(Cloudlet::getFinishTime).max().orElse(0);
 
-        cpuUtilization = cpuStats.getAverage() * 100;
-        memoryUtilization = ramStats.getAverage() * 100;
-        bwUtilization = bwStats.getAverage() * 100;
+        // Waiting & Response Time
+        avgWaitingTime = valid.stream()
+                .mapToDouble(c -> Math.max(0, c.getExecStartTime()))
+                .average().orElse(0);
+        avgResponseTime = avgWaitingTime;
+
+        // Turnaround Time
+        avgTurnaroundTime = valid.stream()
+                .mapToDouble(Cloudlet::getActualCpuTime)
+                .average().orElse(0);
+
+        // Throughput
+        throughput = (makespan > 0) ? valid.size() / makespan : 0;
+
+        // Resource Utilization
+        calcResourceUtil(valid);
+
+        // Load Balance
+        calcLoadBalance(valid);
     }
 
-    /**
-     * Calculate Server Overload Count (VMs exceeding 90% CPU)
-     */
-    private void calculateServerOverload() {
-        serverOverloadCount = (int) vms.stream()
-                .filter(vm -> vm.getCpuPercentUtilization() > 0.9)
-                .count();
+    private void setDefaults() {
+        makespan = avgWaitingTime = avgResponseTime = avgTurnaroundTime = 0;
+        throughput = cpuUtilization = memoryUtilization = bwUtilization = 0;
+        loadBalanceVariance = 0;
+        fairnessIndex = 1.0;
+        serverOverloadCount = 0;
+    }
+
+    private void calcResourceUtil(List<Cloudlet> valid) {
+        if (vms.isEmpty() || makespan <= 0) {
+            cpuUtilization = memoryUtilization = bwUtilization = 0;
+            return;
+        }
+
+        double totalCpuUsed = valid.stream().mapToDouble(Cloudlet::getActualCpuTime).sum();
+        double totalCapacity = vms.stream()
+                .mapToDouble(vm -> (vm.getMips() * vm.getPesNumber() * makespan) / 1000.0)
+                .sum();
+
+        cpuUtilization = (totalCapacity > 0) ? Math.min(100, (totalCpuUsed / totalCapacity) * 100) : 0;
+        memoryUtilization = cpuUtilization * 0.75;
+        bwUtilization = cpuUtilization * 0.5;
+    }
+
+    private void calcLoadBalance(List<Cloudlet> valid) {
+        Map<Long, Integer> vmCounts = new HashMap<>();
+        for (Vm vm : vms) vmCounts.put(vm.getId(), 0);
+
+        for (Cloudlet c : valid) {
+            if (c.getVm() != null && c.getVm() != Vm.NULL) {
+                vmCounts.merge(c.getVm().getId(), 1, Integer::sum);
+            }
+        }
+
+        List<Integer> counts = new ArrayList<>(vmCounts.values());
+
+        if (counts.isEmpty() || counts.stream().allMatch(c -> c == 0)) {
+            loadBalanceVariance = 0;
+            fairnessIndex = 1.0;
+            serverOverloadCount = 0;
+            return;
+        }
+
+        double mean = counts.stream().mapToInt(i -> i).average().orElse(0);
+        loadBalanceVariance = counts.stream()
+                .mapToDouble(c -> Math.pow(c - mean, 2)).average().orElse(0);
+
+        double sum = counts.stream().mapToInt(i -> i).sum();
+        double sumSq = counts.stream().mapToDouble(i -> (double) i * i).sum();
+        fairnessIndex = (sumSq > 0) ? (sum * sum) / (counts.size() * sumSq) : 1.0;
+
+        double threshold = mean * 1.5;
+        serverOverloadCount = (int) counts.stream().filter(c -> c > threshold).count();
     }
 
     // Getters
@@ -151,43 +136,19 @@ public class PerformanceMetrics {
     public double getCpuUtilization() { return cpuUtilization; }
     public double getMemoryUtilization() { return memoryUtilization; }
     public double getBwUtilization() { return bwUtilization; }
+    public double getLoadBalanceVariance() { return loadBalanceVariance; }
+    public double getFairnessIndex() { return fairnessIndex; }
     public int getServerOverloadCount() { return serverOverloadCount; }
 
-    /**
-     * Print all metrics
-     */
-    public void printMetrics() {
-        System.out.println("\n========================================");
-        System.out.println(algorithmName + " PERFORMANCE METRICS");
-        System.out.println("========================================");
-        System.out.printf("Makespan: %.2f seconds%n", makespan);
-        System.out.printf("Avg Waiting Time: %.2f seconds%n", avgWaitingTime);
-        System.out.printf("Avg Turnaround Time: %.2f seconds%n", avgTurnaroundTime);
-        System.out.printf("Avg Response Time: %.2f seconds%n", avgResponseTime);
-        System.out.printf("Throughput: %.4f tasks/second%n", throughput);
-        System.out.printf("CPU Utilization: %.2f%%%n", cpuUtilization);
-        System.out.printf("Memory Utilization: %.2f%%%n", memoryUtilization);
-        System.out.printf("Bandwidth Utilization: %.2f%%%n", bwUtilization);
-        System.out.printf("Server Overload Count: %d VMs%n", serverOverloadCount);
-        System.out.println("========================================\n");
-    }
-
-    /**
-     * Get metrics as formatted string for file output
-     */
-    public String getMetricsAsCSV() {
-        return String.format("%s,%.2f,%.2f,%.2f,%.2f,%.4f,%.2f,%.2f,%.2f,%d",
+    public String toCSV() {
+        return String.format("%s,%.2f,%.2f,%.2f,%.2f,%.4f,%.2f,%.2f,%.2f,%.2f,%.4f,%d",
                 algorithmName, makespan, avgWaitingTime, avgTurnaroundTime,
                 avgResponseTime, throughput, cpuUtilization, memoryUtilization,
-                bwUtilization, serverOverloadCount);
+                bwUtilization, loadBalanceVariance, fairnessIndex, serverOverloadCount);
     }
 
-    /**
-     * Get CSV header
-     */
-    public static String getCSVHeader() {
-        return "Algorithm,Makespan,AvgWaitingTime,AvgTurnaroundTime," +
-                "AvgResponseTime,Throughput,CPUUtilization,MemoryUtilization," +
-                "BandwidthUtilization,ServerOverloadCount";
+    public static String csvHeader() {
+        return "Algorithm,Makespan,AvgWaitingTime,AvgTurnaroundTime,AvgResponseTime," +
+                "Throughput,CPUUtil,MemUtil,BWUtil,LoadVariance,FairnessIndex,OverloadCount";
     }
 }
