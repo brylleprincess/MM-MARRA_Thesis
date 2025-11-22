@@ -4,17 +4,29 @@ import com.thesis.metrics.PerformanceMetrics;
 import java.io.*;
 import java.util.List;
 
+/**
+ * Generates CSV data files for chart creation in external tools
+ * Exports separate files for each metric type for easy plotting
+ */
 public class ChartGenerator {
 
-    private static final String OUTPUT_DIR = "results/graphs/";
+    private static final String OUTPUT_DIR = "results/graphs/"; // Output directory for CSVs
 
+    /**
+     * Generates all chart data files from collected metrics
+     * Creates separate CSVs for: makespan, waiting time, throughput,
+     * load balance, and CPU utilization
+     *
+     * @param metricsList Performance metrics from all algorithm runs
+     */
     public static void generateAllCharts(List<PerformanceMetrics> metricsList) {
-        new File(OUTPUT_DIR).mkdirs();
+        new File(OUTPUT_DIR).mkdirs(); // Create output directory if needed
 
         System.out.println("\n" + "=".repeat(80));
         System.out.println("GENERATING CHART DATA FILES");
         System.out.println("=".repeat(80));
 
+        // Export each metric type to separate CSV for charting
         exportData(metricsList, "1_makespan.csv", "Algorithm,Makespan",
                 m -> String.format("%s,%.2f", m.getAlgorithmName(), m.getMakespan()));
 
@@ -35,6 +47,14 @@ public class ChartGenerator {
         System.out.println("=".repeat(80));
     }
 
+    /**
+     * Helper method to export metrics to a CSV file
+     *
+     * @param list      Metrics to export
+     * @param filename  Output filename
+     * @param header    CSV header row
+     * @param formatter Function to format each metric as CSV row
+     */
     private static void exportData(List<PerformanceMetrics> list, String filename,
                                    String header, java.util.function.Function<PerformanceMetrics, String> formatter) {
         try (PrintWriter w = new PrintWriter(new FileWriter(OUTPUT_DIR + filename))) {
