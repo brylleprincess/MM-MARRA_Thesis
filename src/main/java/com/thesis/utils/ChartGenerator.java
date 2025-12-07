@@ -23,7 +23,7 @@ import java.util.List;
  * Generates PNG chart images for thesis visualization
  * Uses JFreeChart library for professional-quality bar charts
  *
- * Required Maven dependency:
+ * Maven used:
  * <dependency>
  *     <groupId>org.jfree</groupId>
  *     <artifactId>jfreechart</artifactId>

@@ -20,9 +20,9 @@ import java.util.List;
  */
 public class Main {
 
-    private static final int NUMBER_OF_VMS = 15;
-    private static final int NUMBER_OF_HOSTS = 3;
-    private static final int NUMBER_OF_CLOUDLETS = 250;
+    private static final int NUMBER_OF_VMS = 20;
+    private static final int NUMBER_OF_HOSTS = 30;
+    private static final int NUMBER_OF_CLOUDLETS = 1000;
 
     public static void main(String[] args) {
         System.out.println("\n" + "=".repeat(120));
