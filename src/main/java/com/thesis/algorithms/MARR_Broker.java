@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
  *
  * Key Feature: Calculates timeQuantum = (median + mean) / 2
  *
- * @author: Tadena, Princess Brylle N
  */
 public class MARR_Broker extends DatacenterBrokerSimple {
 

@@ -37,12 +37,14 @@ public class WorkloadGenerator {
             long length;
 
             // Assign task length based on distribution percentages
-            if (i < numberOfCloudlets * 0.60) {
-                length = 500 + random.nextInt(1500);      // 60% Normal (500-2000 MI)
-            } else if (i < numberOfCloudlets * 0.80) {
-                length = 100 + random.nextInt(300);       // 20% Short (100-400 MI)
+            double p = random.nextDouble();
+
+            if (p < 0.60) {
+                length = 500 + random.nextInt(1500);      // normal
+            } else if (p < 0.80) {
+                length = 100 + random.nextInt(300);       // short
             } else {
-                length = 3000 + random.nextInt(3000);     // 20% Long (3000-6000 MI)
+                length = 3000 + random.nextInt(3000);     // long
             }
 
             // Create cloudlet with 1 PE requirement
@@ -54,6 +56,8 @@ public class WorkloadGenerator {
                     .setUtilizationModelBw(new UtilizationModelDynamic(0.2)); // Uses 20% allocated BW
             cloudletList.add(cloudlet);
         }
+        // mix the workload so categories are not grouped
+        java.util.Collections.shuffle(cloudletList, new Random(42));
 
         return cloudletList;
     }

@@ -298,7 +298,7 @@ public class ChartGenerator {
 
         // Style the renderer (bars)
         BarRenderer renderer = (BarRenderer) plot.getRenderer();
-        renderer.setBarPainter(new StandardBarPainter()); // Flat bars (no gradient)
+        renderer.setBarPainter(new StandardBarPainter());
         renderer.setShadowVisible(false);
         renderer.setDrawBarOutline(false);
 

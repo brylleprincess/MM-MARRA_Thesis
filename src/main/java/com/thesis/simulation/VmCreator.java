@@ -8,7 +8,9 @@ import org.cloudsimplus.vms.Vm;
 import org.cloudsimplus.vms.VmSimple;
 import org.cloudsimplus.provisioners.ResourceProvisionerSimple;
 import org.cloudsimplus.schedulers.vm.VmSchedulerTimeShared;
+import org.cloudsimplus.schedulers.vm.VmSchedulerSpaceShared;
 import org.cloudsimplus.schedulers.cloudlet.CloudletSchedulerTimeShared;
+import org.cloudsimplus.schedulers.cloudlet.CloudletSchedulerSpaceShared;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,10 +51,11 @@ public class VmCreator {
             vm.setRam(4096)      // 4GB RAM
                     .setBw(1000)       // 1Gbps bandwidth
                     .setSize(10000)    // 10GB storage
-                    .setCloudletScheduler(new CloudletSchedulerTimeShared()); // Time-shared execution
+                    .setCloudletScheduler(new CloudletSchedulerSpaceShared());
             vmList.add(vm);
         }
 
+        java.util.Collections.shuffle(vmList, new java.util.Random(42));
         return vmList;
     }
 
@@ -77,7 +80,7 @@ public class VmCreator {
             Host host = new HostSimple(32768, 10000, 100000, peList); // 32GB, 10Gbps, 100GB
             host.setRamProvisioner(new ResourceProvisionerSimple())   // Simple RAM allocation
                     .setBwProvisioner(new ResourceProvisionerSimple())    // Simple BW allocation
-                    .setVmScheduler(new VmSchedulerTimeShared());         // VMs share CPU time
+                    .setVmScheduler(new VmSchedulerSpaceShared());         // VMs share CPU time
             hostList.add(host);
         }
 

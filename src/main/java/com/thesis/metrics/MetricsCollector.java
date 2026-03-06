@@ -3,6 +3,7 @@ package com.thesis.metrics;
 import java.io.*;
 import java.util.*;
 
+
 public class MetricsCollector {
 
     private final List<PerformanceMetrics> metricsList = new ArrayList<>();
@@ -17,32 +18,36 @@ public class MetricsCollector {
         System.out.println("ALGORITHM PERFORMANCE COMPARISON");
         System.out.println("=".repeat(100));
 
-        System.out.printf("%-20s | %-15s | %-15s | %-15s | %-15s%n",
-                "METRIC", "Traditional RR", "MARR", "MMRR", "MM-MARRA");
+        System.out.printf("%-27s | %14s | %8s | %8s | %8s%n",
+                "METRIC", "Traditional RR", "MARR", "MMRR", "MMARRA");
         System.out.println("-".repeat(100));
 
-        printRow("Makespan", 0, 1, 2, 3, PerformanceMetrics::getMakespan);
-        printRow("Avg Waiting Time", 0, 1, 2, 3, PerformanceMetrics::getAvgWaitingTime);
-        printRow("Avg Response Time", 0, 1, 2, 3, PerformanceMetrics::getAvgResponseTime);
-        printRow("Avg Turnaround", 0, 1, 2, 3, PerformanceMetrics::getAvgTurnaroundTime);
-        printRow("Throughput", 0, 1, 2, 3, PerformanceMetrics::getThroughput);
+        printRow("Makespan (seconds)", 0, 1, 2, 3, PerformanceMetrics::getMakespan);
+        printRow("Avg Waiting Time (seconds)", 0, 1, 2, 3, PerformanceMetrics::getAvgWaitingTime);
+        printRow("Avg Response Time (seconds)", 0, 1, 2, 3, PerformanceMetrics::getAvgResponseTime);
+        printRow("Avg Turnaround (seconds)", 0, 1, 2, 3, PerformanceMetrics::getAvgTurnaroundTime);
+        printRow("Throughput (Task/seconds)", 0, 1, 2, 3, PerformanceMetrics::getThroughput);
         printRow("CPU Utilization %", 0, 1, 2, 3, PerformanceMetrics::getCpuUtilization);
-        printRow("Load Balance Var", 0, 1, 2, 3, PerformanceMetrics::getLoadBalanceVariance);
-        printRow("Fairness Index", 0, 1, 2, 3, PerformanceMetrics::getFairnessIndex);
+        printRow("Load Balance Var", 0, 1, 2, 3, PerformanceMetrics::getLoadBalanceVariance);        printRow("Fairness Index", 0, 1, 2, 3, PerformanceMetrics::getFairnessIndex);
         printIntRow("Overloaded VMs", 0, 1, 2, 3);
 
         System.out.println("=".repeat(100));
     }
-
     private void printRow(String metric, int i1, int i2, int i3, int i4,
                           java.util.function.Function<PerformanceMetrics, Double> getter) {
-        System.out.printf("%-20s | %-15.2f | %-15.2f | %-15.2f | %-15.2f%n", metric,
-                getter.apply(metricsList.get(i1)), getter.apply(metricsList.get(i2)),
-                getter.apply(metricsList.get(i3)), getter.apply(metricsList.get(i4)));
+
+        System.out.printf("%-27s | %14.2f | %8.2f | %8.2f | %8.2f%n",
+                metric,
+                getter.apply(metricsList.get(i1)),
+                getter.apply(metricsList.get(i2)),
+                getter.apply(metricsList.get(i3)),
+                getter.apply(metricsList.get(i4)));
     }
 
     private void printIntRow(String metric, int i1, int i2, int i3, int i4) {
-        System.out.printf("%-20s | %-15d | %-15d | %-15d | %-15d%n", metric,
+
+        System.out.printf("%-27s | %14d | %8d | %8d | %8d%n",
+                metric,
                 metricsList.get(i1).getServerOverloadCount(),
                 metricsList.get(i2).getServerOverloadCount(),
                 metricsList.get(i3).getServerOverloadCount(),
@@ -55,7 +60,7 @@ public class MetricsCollector {
         if (baseline == null || improved == null) return;
 
         System.out.println("\n" + "=".repeat(100));
-        System.out.println("MM-MARRA IMPROVEMENTS OVER TRADITIONAL RR (THESIS VALIDATION)");
+        System.out.println("MMARRA IMPROVEMENTS OVER TRADITIONAL and CONTEMPORARY RR \n(THESIS VALIDATION)");
         System.out.println("=".repeat(100));
 
         double makespanImpr = calcImpr(baseline.getMakespan(), improved.getMakespan());
@@ -99,7 +104,7 @@ public class MetricsCollector {
         System.out.println("-".repeat(100));
         System.out.printf("TARGETS MET: %d/4%n", passed);
         if (passed >= 3) {
-            System.out.println("✓✓✓ MM-MARRA SHOWS SIGNIFICANT IMPROVEMENTS! ✓✓✓");
+            System.out.println("✓✓✓ MMARRA SHOWS SIGNIFICANT IMPROVEMENTS! ✓✓✓");
         } else {
             System.out.println("⚠ Some improvements shown, review load balancing");
         }

@@ -10,7 +10,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Modified Multi-Level Round Robin (MMLRR) Broker
+ * Modified Multi-Level Round Robin (MMRR) Broker
  * * CLASSIFICATION STRATEGY:
  * Uses Mean (μ) and Standard Deviation (σ) to create dynamic priority queues.
  * Level 1 (High Priority): Length < μ - σ
@@ -56,8 +56,8 @@ public class MMRR_Broker extends DatacenterBrokerSimple {
         // T2 = Mean + Standard Deviation
         t2 = mean + stdDev;
 
-        System.out.printf("  [MMLRR] Mean: %.2f, StdDev: %.2f%n", mean, stdDev);
-        System.out.printf("  [MMLRR] Thresholds: T1 (%.2f) | T2 (%.2f)%n", t1, t2);
+        System.out.printf("  [MMRR] Mean: %.2f, StdDev: %.2f%n", mean, stdDev);
+        System.out.printf("  [MMRR] Thresholds: T1 (%.2f) | T2 (%.2f)%n", t1, t2);
 
         // 4. Classification (Queueing)
         for (Cloudlet c : list) {
@@ -70,7 +70,7 @@ public class MMRR_Broker extends DatacenterBrokerSimple {
             }
         }
 
-        System.out.printf("  [MMLRR] Levels: L1=%d, L2=%d, L3=%d%n",
+        System.out.printf("  [MMRR] Levels: L1=%d, L2=%d, L3=%d%n",
                 level1Queue.size(), level2Queue.size(), level3Queue.size());
 
         // 5. Reconstruct Submission List based on Priority
@@ -110,7 +110,7 @@ public class MMRR_Broker extends DatacenterBrokerSimple {
 
     public void printStatistics() {
         System.out.println("\n" + "=".repeat(80));
-        System.out.println("MMLRR (MEAN-STD_DEV) STATISTICS");
+        System.out.println("MMRR (MEAN-STD_DEV) STATISTICS");
         System.out.println("=".repeat(80));
         System.out.printf("  Mean: %.2f MI%n", mean);
         System.out.printf("  Std Deviation: %.2f%n", stdDev);

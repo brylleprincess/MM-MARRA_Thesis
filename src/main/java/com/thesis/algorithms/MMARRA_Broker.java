@@ -10,21 +10,21 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * MM-MARRA: Multi-Level Median Average Round Robin Algorithm
+ * MMARRA: Multi-Level Median Average Round Robin Algorithm
  *
- * Core Innovation: Combines three strategies for optimal task-to-VM mapping:
- * 1. SJF Sorting - Processes shorter tasks first to reduce waiting time
- * 2. Strict Load Balance - Always assigns to VMs with minimum task count
- * 3. Smart Matching - Matches task size to VM capacity as tie-breaker
+ * Actual behavior in this implementation:
+ * 1) Cloudlets are sorted using SJF (Shortest Job First).
+ * 2) VM selection first balances based on workload ratio (Total MI / VM capacity),
+ *    allowing a small tolerance band to avoid always selecting only 1 VM.
+ * 3) VM selection then uses a projected workload score for task-VM matching.
  *
- * Key Features:
- * - Uses median-average statistics for outlier-resistant task classification
- * - Multi-metric awareness (task length, VM capacity, current load)
- * - Achieves ~70% makespan reduction over traditional Round Robin
- *
- * @author: Tadena, Princess Brylle N
+ * Task classification thresholds:
+ * - Long:  > 1.5 * median
+ * - Short: < 0.5 * median
+ * - Medium: otherwise
  */
-public class MM_MARRA_Broker extends DatacenterBrokerSimple {
+
+public class MMARRA_Broker extends DatacenterBrokerSimple {
 
     // Load tracking: maps each VM to its current workload metrics
     private final Map<Vm, VmLoadMetrics> vmLoadMap = new HashMap<>();
@@ -34,7 +34,7 @@ public class MM_MARRA_Broker extends DatacenterBrokerSimple {
     private double avgTaskLength = 0;     // Mean task length for reference
     private int totalDecisions = 0;       // Counter for scheduling decisions made
 
-    public MM_MARRA_Broker(CloudSimPlus simulation) {
+    public MMARRA_Broker(CloudSimPlus simulation) {
         super(simulation);
     }
 
@@ -47,7 +47,7 @@ public class MM_MARRA_Broker extends DatacenterBrokerSimple {
      * @return This broker instance for method chaining
      */
     @Override
-    public MM_MARRA_Broker submitCloudletList(List<? extends Cloudlet> list) {
+    public MMARRA_Broker submitCloudletList(List<? extends Cloudlet> list) {
         if (list == null || list.isEmpty()) {
             return this;
         }
@@ -61,14 +61,14 @@ public class MM_MARRA_Broker extends DatacenterBrokerSimple {
         medianTaskLength = StatisticsHelper.calculateMedian(lengths);
         avgTaskLength = StatisticsHelper.calculateMean(lengths);
 
-        System.out.printf("  [MM-MARRA] Median: %.0f MI, Average: %.0f MI%n",
+        System.out.printf("  [MMARRA] Median: %.0f MI, Average: %.0f MI%n",
                 medianTaskLength, avgTaskLength);
 
         // Apply Shortest Job First sorting to minimize average waiting time
         List<Cloudlet> sorted = new ArrayList<>(list);
         sorted.sort(Comparator.comparingLong(Cloudlet::getLength));
 
-        System.out.println("  [MM-MARRA] Applied SJF sorting");
+        System.out.println("  [MMARRA] Applied SJF sorting");
 
         super.submitCloudletList(sorted);
         return this;
@@ -76,7 +76,7 @@ public class MM_MARRA_Broker extends DatacenterBrokerSimple {
 
     /**
      * Core scheduling logic: selects optimal VM for each cloudlet
-     * Implements MM-MARRA's multi-level decision process
+     * Implements MMARRA's multi-level decision process
      *
      * @param cloudlet Task requiring VM assignment
      * @return Selected VM optimized for load balance and task-VM matching
@@ -97,7 +97,7 @@ public class MM_MARRA_Broker extends DatacenterBrokerSimple {
             }
         }
 
-        // Apply MM-MARRA selection: strict balance + smart matching
+        // Apply MMARRA selection: strict balance + smart matching
         Vm bestVm = selectVmStrictBalance(cloudlet);
 
         // Update VM's load metrics after assignment
@@ -110,7 +110,7 @@ public class MM_MARRA_Broker extends DatacenterBrokerSimple {
     }
 
     /**
-     * MM-MARRA's Two-Level VM Selection Strategy:
+     * MMARRA's Two-Level VM Selection Strategy:
      *
      * Level 1 (STRICT BALANCE): Filters VMs to only those with minimum task count
      *          This ensures even distribution of tasks across all VMs
@@ -123,54 +123,77 @@ public class MM_MARRA_Broker extends DatacenterBrokerSimple {
      * @param cloudlet Task to be assigned
      * @return Optimal VM balancing load distribution and task-capacity matching
      */
-    private Vm selectVmStrictBalance(Cloudlet cloudlet) {
-        // LEVEL 1: Find the minimum task count across all VMs
-        int minTasks = vmLoadMap.values().stream()
-                .mapToInt(VmLoadMetrics::getTaskCount)
-                .min().orElse(0);
 
-        // Filter to only VMs that have exactly the minimum task count
-        List<Vm> candidates = new ArrayList<>();
-        for (Map.Entry<Vm, VmLoadMetrics> entry : vmLoadMap.entrySet()) {
-            if (entry.getValue().getTaskCount() == minTasks) {
-                candidates.add(entry.getKey());
-            }
-        }
+   private Vm selectVmStrictBalance(Cloudlet cloudlet) {
 
-        // Fallback: use all VMs if filtering failed
-        if (candidates.isEmpty()) {
-            candidates = new ArrayList<>(vmLoadMap.keySet());
-        }
+       // --- LEVEL 1: Workload-aware balancing
+       // loadRatio = totalMI / capacity
+       double minLoadRatio = vmLoadMap.entrySet().stream()
+               .mapToDouble(e -> {
+                   VmLoadMetrics m = e.getValue();
+                   return (m.getVmCapacity() > 0) ? (m.getTotalMI() / m.getVmCapacity()) : Double.MAX_VALUE;
+               })
+               .min()
+               .orElse(0);
 
-        // Single candidate: no tie-breaking needed
-        if (candidates.size() == 1) {
-            return candidates.get(0);
-        }
+       // Candidate set within a tolerance band of the best load ratio
+       final double tolerance = Math.max(1e-6, minLoadRatio * 0.10); // 10% band, safer floor than 1e-9
 
-        // LEVEL 2: Smart matching based on task classification
-        boolean isLongTask = cloudlet.getLength() > medianTaskLength * 1.5;   // Heavy workload
-        boolean isShortTask = cloudlet.getLength() < medianTaskLength * 0.5;  // Light workload
+       List<Vm> candidates = new ArrayList<>();
+       for (Map.Entry<Vm, VmLoadMetrics> entry : vmLoadMap.entrySet()) {
+           VmLoadMetrics m = entry.getValue();
+           double ratio = (m.getVmCapacity() > 0)
+                   ? (m.getTotalMI() / m.getVmCapacity())
+                   : Double.MAX_VALUE;
 
-        if (isLongTask) {
-            // Long task → assign to MOST powerful VM for faster execution
-            return candidates.stream()
-                    .max(Comparator.comparingDouble(vm -> vm.getMips() * vm.getPesNumber()))
-                    .orElse(candidates.get(0));
-        } else if (isShortTask) {
-            // Short task → assign to LEAST powerful VM to reserve capacity
-            return candidates.stream()
-                    .min(Comparator.comparingDouble(vm -> vm.getMips() * vm.getPesNumber()))
-                    .orElse(candidates.get(0));
-        } else {
-            // Medium task → assign to VM with least total workload (MI)
-            return candidates.stream()
-                    .min(Comparator.comparingDouble(vm -> {
-                        VmLoadMetrics m = vmLoadMap.get(vm);
-                        return (m != null) ? m.getTotalMI() : 0;
-                    }))
-                    .orElse(candidates.get(0));
-        }
-    }
+           if (ratio <= (minLoadRatio + tolerance)) {
+               candidates.add(entry.getKey());
+           }
+       }
+
+       if (candidates.isEmpty()) {
+           candidates = new ArrayList<>(vmLoadMap.keySet());
+       }
+       if (candidates.size() == 1) {
+           return candidates.get(0);
+       }
+
+       // --- LEVEL 2: MMARRA classification-based matching ---
+       boolean isLongTask  = cloudlet.getLength() > medianTaskLength * 1.5;
+       boolean isShortTask = cloudlet.getLength() < medianTaskLength * 0.5;
+
+       if (isLongTask) {
+           return candidates.stream()
+                   .min(Comparator.comparingDouble(vm -> {
+                       VmLoadMetrics m = vmLoadMap.get(vm);
+                       double cap = (m != null) ? m.getVmCapacity() : 0;
+                       double cur = (m != null) ? m.getTotalMI() : 0;
+                       return (cap > 0) ? ((cur + cloudlet.getLength()) / cap) : Double.MAX_VALUE;
+                   }))
+                   .orElse(candidates.get(0));
+       }
+
+       if (isShortTask) {
+           return candidates.stream()
+                   .min(Comparator.comparingDouble(vm -> {
+                       VmLoadMetrics m = vmLoadMap.get(vm);
+                       double cap = (m != null) ? m.getVmCapacity() : 0;
+                       double cur = (m != null) ? m.getTotalMI() : 0;
+                       return (cap > 0) ? ((cur + cloudlet.getLength()) / cap) : Double.MAX_VALUE;
+                   }))
+                   .orElse(candidates.get(0));
+       }
+
+       // Medium task: choose VM with lowest projected workload
+       return candidates.stream()
+               .min(Comparator.comparingDouble(vm -> {
+                   VmLoadMetrics m = vmLoadMap.get(vm);
+                   double cap = (m != null) ? m.getVmCapacity() : 0;
+                   double cur = (m != null) ? m.getTotalMI() : 0;
+                   return (cap > 0) ? ((cur + cloudlet.getLength()) / cap) : Double.MAX_VALUE;
+               }))
+               .orElse(candidates.get(0));
+   }
 
     /**
      * Prints detailed load distribution statistics showing task allocation per VM
@@ -178,7 +201,7 @@ public class MM_MARRA_Broker extends DatacenterBrokerSimple {
      */
     public void printStatistics() {
         System.out.println("\n" + "=".repeat(80));
-        System.out.println("MM-MARRA LOAD DISTRIBUTION");
+        System.out.println("MMARRA LOAD DISTRIBUTION");
         System.out.println("=".repeat(80));
 
         if (!vmLoadMap.isEmpty()) {
@@ -226,5 +249,7 @@ public class MM_MARRA_Broker extends DatacenterBrokerSimple {
         public int getTaskCount() { return taskCount; }
         public double getTotalMI() { return totalMI; }
         public double getVmCapacity() { return vmCapacity; }
+
+        }
     }
-}
+
