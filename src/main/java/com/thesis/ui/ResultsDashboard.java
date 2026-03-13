@@ -21,6 +21,10 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * @author: Princess Brylle N. Tadena
+ */
+
 public class ResultsDashboard extends JFrame {
 
     private final MetricsCollector collector;
@@ -134,7 +138,7 @@ public class ResultsDashboard extends JFrame {
 
         int count = collector.getMetricsList() == null ? 0 : collector.getMetricsList().size();
         panel.add(createSummaryLabel("Algorithms Run", String.valueOf(count)));
-
+/**
         if (!collector.getMetricsList().isEmpty()) {
             List<PerformanceMetrics> ordered = sortMetrics(collector.getMetricsList());
             PerformanceMetrics bestMakespan = getBestMakespan(ordered);
@@ -146,7 +150,7 @@ public class ResultsDashboard extends JFrame {
             panel.add(createSummaryLabel("Best Makespan", "-"));
             panel.add(createSummaryLabel("Best Throughput", "-"));
         }
-
+*/
         JLabel status = new JLabel("Results generated successfully.");
         status.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         panel.add(status);

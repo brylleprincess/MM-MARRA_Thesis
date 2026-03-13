@@ -3,6 +3,10 @@ package com.thesis.ui;
 import javax.swing.*;
 
 /**
+ * @author: Princess Brylle N. Tadena
+ */
+
+/**
  * Launches the Swing UI.
  */
 public class Launcher {

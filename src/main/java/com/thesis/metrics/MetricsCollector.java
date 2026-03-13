@@ -3,6 +3,9 @@ package com.thesis.metrics;
 import java.io.*;
 import java.util.*;
 
+/**
+ * @author: Princess Brylle N. Tadena
+ */
 
 public class MetricsCollector {
 

@@ -4,6 +4,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * @author: Princess Brylle N. Tadena
+ */
+
 public class StatisticsHelper {
 
     public static double calculateMedian(List<Double> values) {

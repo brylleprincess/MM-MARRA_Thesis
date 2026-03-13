@@ -4,10 +4,13 @@ import org.cloudsimplus.cloudlets.Cloudlet;
 import org.cloudsimplus.cloudlets.CloudletSimple;
 import org.cloudsimplus.utilizationmodels.UtilizationModelDynamic;
 import org.cloudsimplus.utilizationmodels.UtilizationModelFull;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+/**
+ * @author: Princess Brylle N. Tadena
+ */
 
 /**
  * Generates cloudlets (tasks) with realistic workload distribution

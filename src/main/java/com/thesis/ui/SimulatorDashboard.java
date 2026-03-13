@@ -6,6 +6,10 @@ import com.thesis.metrics.MetricsCollector;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * @author: Princess Brylle N. Tadena
+ */
+
 
 public class SimulatorDashboard extends JFrame {
 

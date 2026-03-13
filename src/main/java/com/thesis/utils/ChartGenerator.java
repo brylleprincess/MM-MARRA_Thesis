@@ -13,11 +13,14 @@ import org.jfree.chart.renderer.category.BarRenderer;
 import org.jfree.chart.renderer.category.StandardBarPainter;
 import org.jfree.chart.title.TextTitle;
 import org.jfree.data.category.DefaultCategoryDataset;
-
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+
+/**
+ * @author: Princess Brylle N. Tadena
+ */
 
 /**
  * Generates PNG chart images for thesis visualization

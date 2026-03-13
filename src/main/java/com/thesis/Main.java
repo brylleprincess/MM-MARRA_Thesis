@@ -18,8 +18,12 @@ import javax.swing.UIManager;
 import java.util.List;
 
 /**
- * MMARRA Thesis Simulation - FINAL WORKING VERSION
+ * MMARRA Thesis Simulation - FINAL WORKING VERSION WITH UI :) T-T
+ *
+ * @author: Princess Brylle N. Tadena
+ *
  */
+
 public class Main {
 
     private static final int NUMBER_OF_VMS = 15;

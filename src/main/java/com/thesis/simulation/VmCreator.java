@@ -7,13 +7,14 @@ import org.cloudsimplus.resources.PeSimple;
 import org.cloudsimplus.vms.Vm;
 import org.cloudsimplus.vms.VmSimple;
 import org.cloudsimplus.provisioners.ResourceProvisionerSimple;
-import org.cloudsimplus.schedulers.vm.VmSchedulerTimeShared;
 import org.cloudsimplus.schedulers.vm.VmSchedulerSpaceShared;
-import org.cloudsimplus.schedulers.cloudlet.CloudletSchedulerTimeShared;
 import org.cloudsimplus.schedulers.cloudlet.CloudletSchedulerSpaceShared;
-
 import java.util.ArrayList;
 import java.util.List;
+
+/**
+ * @author: Princess Brylle N. Tadena
+ */
 
 /**
  * Factory class for creating VMs and Hosts with heterogeneous configurations
