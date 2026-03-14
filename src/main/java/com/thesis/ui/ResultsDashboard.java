@@ -21,44 +21,40 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * @author: Princess Brylle N. Tadena
- */
-
 public class ResultsDashboard extends JFrame {
 
     private final MetricsCollector collector;
-    private final int hosts;
-    private final int vms;
-    private final int cloudlets;
+    private final List<int[]> testCases;
     private final String selectedAlgorithm;
 
-    private JTable resultsTable;
-    private JTabbedPane tabbedPane;
+    private JPanel rightContentPanel;
+    private CardLayout rightCardLayout;
 
-    public ResultsDashboard(MetricsCollector collector, int hosts, int vms, int cloudlets, String selectedAlgorithm) {
+    private JPanel comparisonContentPanel;
+    private JPanel chartsContentPanel;
+
+    private String selectedChartType = "overview";
+
+    public ResultsDashboard(MetricsCollector collector, List<int[]> testCases, String selectedAlgorithm) {
         this.collector = collector;
-        this.hosts = hosts;
-        this.vms = vms;
-        this.cloudlets = cloudlets;
+        this.testCases = testCases;
         this.selectedAlgorithm = selectedAlgorithm;
 
         setTitle("Cloud Task Scheduling Simulator - Step 2 Results");
-        setSize(1320, 780);
+        setSize(1320, 820);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout(12, 12));
 
         add(createHeaderPanel(), BorderLayout.NORTH);
-        add(createMainPanel(), BorderLayout.CENTER);
+        add(createBodyPanel(), BorderLayout.CENTER);
 
-        List<PerformanceMetrics> orderedMetrics = sortMetrics(collector.getMetricsList());
-        loadTable(orderedMetrics);
-        loadCharts(orderedMetrics);
+        refreshComparisonView();
+        refreshChartsView();
     }
 
     private JPanel createHeaderPanel() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(12, 12, 0, 12));
         panel.setBackground(Color.WHITE);
 
@@ -75,13 +71,71 @@ public class ResultsDashboard extends JFrame {
         textPanel.add(subtitle);
 
         panel.add(textPanel, BorderLayout.WEST);
-        panel.add(createCompactExportPanel(), BorderLayout.EAST);
+        return panel;
+    }
+
+    private JPanel createBodyPanel() {
+        JPanel body = new JPanel(new BorderLayout(12, 12));
+        body.setBorder(BorderFactory.createEmptyBorder(0, 12, 12, 12));
+        body.setBackground(Color.WHITE);
+
+        body.add(createLeftPanel(), BorderLayout.WEST);
+        body.add(createRightPanel(), BorderLayout.CENTER);
+
+        return body;
+    }
+
+    private JPanel createLeftPanel() {
+        JPanel left = new JPanel(new BorderLayout(12, 12));
+        left.setPreferredSize(new Dimension(260, 760));
+        left.setBackground(Color.WHITE);
+
+        left.add(createSummaryPanel(), BorderLayout.NORTH);
+        left.add(createExportPanel(), BorderLayout.CENTER);
+
+        return left;
+    }
+
+    private JPanel createSummaryPanel() {
+        JPanel panel = new JPanel(new GridLayout(9, 1, 6, 6));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("Simulation Summary"),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
+        panel.setBackground(Color.WHITE);
+
+        int minHosts = Integer.MAX_VALUE;
+        int maxHosts = Integer.MIN_VALUE;
+        int minVms = Integer.MAX_VALUE;
+        int maxVms = Integer.MIN_VALUE;
+        int minCloudlets = Integer.MAX_VALUE;
+        int maxCloudlets = Integer.MIN_VALUE;
+
+        for (int[] t : testCases) {
+            minHosts = Math.min(minHosts, t[0]);
+            maxHosts = Math.max(maxHosts, t[0]);
+            minVms = Math.min(minVms, t[1]);
+            maxVms = Math.max(maxVms, t[1]);
+            minCloudlets = Math.min(minCloudlets, t[2]);
+            maxCloudlets = Math.max(maxCloudlets, t[2]);
+        }
+
+        panel.add(createSummaryLabel("Test Cases", String.valueOf(testCases.size())));
+        panel.add(createSummaryLabel("Hosts Range", minHosts + " - " + maxHosts));
+        panel.add(createSummaryLabel("VMs Range", minVms + " - " + maxVms));
+        panel.add(createSummaryLabel("Cloudlets Range", minCloudlets + " - " + maxCloudlets));
+        panel.add(createSummaryLabel("Selection", selectedAlgorithm));
+        panel.add(createSummaryLabel("Algorithms Shown", "Run All Algorithms".equals(selectedAlgorithm) ? "4" : "1"));
+
+        JLabel status = new JLabel("Results generated successfully.");
+        status.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        panel.add(status);
 
         return panel;
     }
 
-    private JPanel createCompactExportPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+    private JPanel createExportPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         panel.setBorder(BorderFactory.createTitledBorder("Exports"));
         panel.setBackground(Color.WHITE);
 
@@ -91,8 +145,8 @@ public class ResultsDashboard extends JFrame {
         exportCsvButton.addActionListener(e -> exportCsv());
         exportGraphsButton.addActionListener(e -> exportGraphs());
 
-        exportCsvButton.setPreferredSize(new Dimension(120, 32));
-        exportGraphsButton.setPreferredSize(new Dimension(130, 32));
+        exportCsvButton.setPreferredSize(new Dimension(110, 32));
+        exportGraphsButton.setPreferredSize(new Dimension(110, 32));
 
         panel.add(exportCsvButton);
         panel.add(exportGraphsButton);
@@ -100,62 +154,273 @@ public class ResultsDashboard extends JFrame {
         return panel;
     }
 
-    private JPanel createMainPanel() {
-        JPanel main = new JPanel(new BorderLayout(12, 12));
-        main.setBorder(BorderFactory.createEmptyBorder(0, 12, 12, 12));
-        main.setBackground(Color.WHITE);
-
-        main.add(createTopContent(), BorderLayout.NORTH);
-        main.add(createChartsPanel(), BorderLayout.CENTER);
-
-        return main;
-    }
-
-    private JPanel createTopContent() {
-        JPanel top = new JPanel(new BorderLayout(12, 12));
-        top.setPreferredSize(new Dimension(1280, 220));
-        top.setBackground(Color.WHITE);
-
-        top.add(createSummaryPanel(), BorderLayout.WEST);
-        top.add(createTablePanel(), BorderLayout.CENTER);
-
-        return top;
-    }
-
-    private JPanel createSummaryPanel() {
-        JPanel panel = new JPanel(new GridLayout(8, 1, 6, 6));
-        panel.setPreferredSize(new Dimension(260, 210));
-        panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createTitledBorder("Simulation Summary"),
-                BorderFactory.createEmptyBorder(10, 10, 10, 10)
-        ));
+    private JPanel createRightPanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBackground(Color.WHITE);
 
-        panel.add(createSummaryLabel("Hosts", String.valueOf(hosts)));
-        panel.add(createSummaryLabel("VMs", String.valueOf(vms)));
-        panel.add(createSummaryLabel("Cloudlets", String.valueOf(cloudlets)));
-        panel.add(createSummaryLabel("Selection", selectedAlgorithm));
+        panel.add(createMainModeButtons(), BorderLayout.NORTH);
 
-        int count = collector.getMetricsList() == null ? 0 : collector.getMetricsList().size();
-        panel.add(createSummaryLabel("Algorithms Run", String.valueOf(count)));
-/**
-        if (!collector.getMetricsList().isEmpty()) {
-            List<PerformanceMetrics> ordered = sortMetrics(collector.getMetricsList());
-            PerformanceMetrics bestMakespan = getBestMakespan(ordered);
-            PerformanceMetrics bestThroughput = getBestThroughput(ordered);
+        rightCardLayout = new CardLayout();
+        rightContentPanel = new JPanel(rightCardLayout);
+        rightContentPanel.setBackground(Color.WHITE);
 
-            panel.add(createSummaryLabel("Best Makespan", bestMakespan.getAlgorithmName()));
-            panel.add(createSummaryLabel("Best Throughput", bestThroughput.getAlgorithmName()));
-        } else {
-            panel.add(createSummaryLabel("Best Makespan", "-"));
-            panel.add(createSummaryLabel("Best Throughput", "-"));
-        }
-*/
-        JLabel status = new JLabel("Results generated successfully.");
-        status.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        panel.add(status);
+        comparisonContentPanel = new JPanel(new BorderLayout());
+        comparisonContentPanel.setBackground(Color.WHITE);
+
+        chartsContentPanel = new JPanel(new BorderLayout());
+        chartsContentPanel.setBackground(Color.WHITE);
+
+        rightContentPanel.add(comparisonContentPanel, "comparison");
+        rightContentPanel.add(chartsContentPanel, "charts");
+
+        panel.add(rightContentPanel, BorderLayout.CENTER);
+
+        rightCardLayout.show(rightContentPanel, "comparison");
+        return panel;
+    }
+
+    private JPanel createMainModeButtons() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        panel.setBackground(Color.WHITE);
+
+        JButton comparisonButton = new JButton("Algorithm Performance Comparison");
+        JButton chartsButton = new JButton("Charts");
+
+        comparisonButton.addActionListener(e -> rightCardLayout.show(rightContentPanel, "comparison"));
+        chartsButton.addActionListener(e -> rightCardLayout.show(rightContentPanel, "charts"));
+
+        panel.add(comparisonButton);
+        panel.add(chartsButton);
 
         return panel;
+    }
+
+    private void refreshComparisonView() {
+        comparisonContentPanel.removeAll();
+
+        JPanel content = new JPanel();
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setBackground(Color.WHITE);
+
+        List<List<PerformanceMetrics>> perCaseMetrics = splitMetricsByCase(collector.getMetricsList());
+
+        for (int i = 0; i < testCases.size(); i++) {
+            int[] testCase = testCases.get(i);
+            List<PerformanceMetrics> caseMetrics = i < perCaseMetrics.size()
+                    ? sortMetrics(perCaseMetrics.get(i))
+                    : new ArrayList<>();
+
+            content.add(createCaseTableBlock(i + 1, testCase, caseMetrics));
+            content.add(Box.createVerticalStrut(16));
+        }
+
+        JScrollPane scrollPane = new JScrollPane(content);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(18);
+
+        comparisonContentPanel.add(scrollPane, BorderLayout.CENTER);
+        comparisonContentPanel.revalidate();
+        comparisonContentPanel.repaint();
+    }
+
+    private JPanel createCaseTableBlock(int caseNumber, int[] testCase, List<PerformanceMetrics> caseMetrics) {
+        JPanel block = new JPanel(new BorderLayout(8, 8));
+        block.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        block.setBackground(Color.WHITE);
+        block.setMaximumSize(new Dimension(Integer.MAX_VALUE, 360));
+
+        JLabel header = new JLabel(
+                "Test Case: " + caseNumber +
+                        "    Hosts: " + testCase[0] +
+                        "    VMs: " + testCase[1] +
+                        "    Cloudlets: " + testCase[2]
+        );
+        header.setFont(new Font("Segoe UI", Font.BOLD, 18));
+
+        JTable table = new JTable();
+        table.setRowHeight(28);
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        table.setFillsViewportHeight(false);
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+
+        loadTableInto(table, caseMetrics);
+
+        int visibleRows = table.getRowCount();
+        int tableHeight = table.getTableHeader().getPreferredSize().height + (visibleRows * table.getRowHeight()) + 4;
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setPreferredSize(new Dimension(1080, tableHeight + 8));
+        scrollPane.setMaximumSize(new Dimension(Integer.MAX_VALUE, tableHeight + 8));
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+
+        JPanel tablePanel = new JPanel(new BorderLayout());
+        tablePanel.setBorder(BorderFactory.createTitledBorder("Algorithm Performance Comparison"));
+        tablePanel.setBackground(Color.WHITE);
+        tablePanel.add(scrollPane, BorderLayout.CENTER);
+
+        block.add(header, BorderLayout.NORTH);
+        block.add(tablePanel, BorderLayout.CENTER);
+
+        return block;
+    }
+
+    private void refreshChartsView() {
+        chartsContentPanel.removeAll();
+
+        chartsContentPanel.add(createChartNavigationPanel(), BorderLayout.NORTH);
+        chartsContentPanel.add(createChartsScrollPane(), BorderLayout.CENTER);
+
+        chartsContentPanel.revalidate();
+        chartsContentPanel.repaint();
+    }
+
+    private JPanel createChartNavigationPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        panel.setBackground(Color.WHITE);
+
+        panel.add(createChartNavButton("Overview", "overview"));
+        panel.add(createChartNavButton("Makespan", "makespan"));
+        panel.add(createChartNavButton("Throughput", "throughput"));
+        panel.add(createChartNavButton("Turnaround", "turnaround"));
+        panel.add(createChartNavButton("Load Balance", "load"));
+        panel.add(createChartNavButton("Fairness", "fairness"));
+        panel.add(createChartNavButton("Overloaded VMs", "overloaded"));
+        panel.add(createChartNavButton("Utilization", "utilization"));
+
+        return panel;
+    }
+
+    private JButton createChartNavButton(String text, String type) {
+        JButton button = new JButton(text);
+        button.addActionListener(e -> {
+            selectedChartType = type;
+            refreshChartsView();
+        });
+        return button;
+    }
+
+    private JScrollPane createChartsScrollPane() {
+        JPanel content = new JPanel();
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setBackground(Color.WHITE);
+
+        List<List<PerformanceMetrics>> perCaseMetrics = splitMetricsByCase(collector.getMetricsList());
+
+        for (int i = 0; i < testCases.size(); i++) {
+            int[] testCase = testCases.get(i);
+            List<PerformanceMetrics> caseMetrics = i < perCaseMetrics.size()
+                    ? sortMetrics(perCaseMetrics.get(i))
+                    : new ArrayList<>();
+
+            content.add(createCaseGraphBlock(i + 1, testCase, caseMetrics));
+            content.add(Box.createVerticalStrut(16));
+        }
+
+        JScrollPane scrollPane = new JScrollPane(content);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(18);
+        return scrollPane;
+    }
+
+    private JPanel createCaseGraphBlock(int caseNumber, int[] testCase, List<PerformanceMetrics> caseMetrics) {
+        JPanel block = new JPanel(new BorderLayout(8, 8));
+        block.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        block.setBackground(Color.WHITE);
+        block.setMaximumSize(new Dimension(Integer.MAX_VALUE, 430));
+
+        JLabel header = new JLabel(
+                "Test Case: " + caseNumber +
+                        "    Hosts: " + testCase[0] +
+                        "    VMs: " + testCase[1] +
+                        "    Cloudlets: " + testCase[2]
+        );
+        header.setFont(new Font("Segoe UI", Font.BOLD, 18));
+
+        JPanel graphPanel;
+
+        if ("overview".equals(selectedChartType)) {
+            graphPanel = new JPanel(new GridLayout(1, 2, 14, 14));
+            graphPanel.setBackground(Color.WHITE);
+
+            ChartPanel comprehensivePanel = new ChartPanel(createComprehensiveChart(caseMetrics));
+            ChartPanel utilizationPanel = new ChartPanel(createResourceUtilizationChart(caseMetrics));
+
+            comprehensivePanel.setPreferredSize(new Dimension(480, 260));
+            utilizationPanel.setPreferredSize(new Dimension(480, 260));
+
+            comprehensivePanel.setMouseWheelEnabled(true);
+            utilizationPanel.setMouseWheelEnabled(true);
+            comprehensivePanel.setDomainZoomable(false);
+            comprehensivePanel.setRangeZoomable(false);
+            utilizationPanel.setDomainZoomable(false);
+            utilizationPanel.setRangeZoomable(false);
+
+            graphPanel.add(comprehensivePanel);
+            graphPanel.add(utilizationPanel);
+        } else if ("utilization".equals(selectedChartType)) {
+            graphPanel = new JPanel(new BorderLayout());
+            graphPanel.setBackground(Color.WHITE);
+
+            ChartPanel chartPanel = new ChartPanel(createResourceUtilizationChart(caseMetrics));
+            chartPanel.setPreferredSize(new Dimension(980, 300));
+            chartPanel.setMouseWheelEnabled(true);
+            chartPanel.setDomainZoomable(false);
+            chartPanel.setRangeZoomable(false);
+
+            graphPanel.add(chartPanel, BorderLayout.CENTER);
+        } else {
+            String title;
+            String yLabel;
+
+            switch (selectedChartType) {
+                case "makespan":
+                    title = "Makespan Comparison";
+                    yLabel = "Makespan (seconds)";
+                    break;
+                case "throughput":
+                    title = "Throughput Comparison";
+                    yLabel = "Throughput (tasks/sec)";
+                    break;
+                case "turnaround":
+                    title = "Turnaround Time Comparison";
+                    yLabel = "Turnaround Time (seconds)";
+                    break;
+                case "load":
+                    title = "Load Balance Variance Comparison";
+                    yLabel = "Variance";
+                    break;
+                case "fairness":
+                    title = "Fairness Index Comparison";
+                    yLabel = "Fairness Index";
+                    break;
+                default:
+                    title = "Overloaded VMs Comparison";
+                    yLabel = "Count";
+                    break;
+            }
+
+            graphPanel = new JPanel(new BorderLayout());
+            graphPanel.setBackground(Color.WHITE);
+
+            ChartPanel chartPanel = new ChartPanel(createChart(title, "Algorithm", yLabel, caseMetrics, selectedChartType));
+            chartPanel.setPreferredSize(new Dimension(980, 300));
+            chartPanel.setMouseWheelEnabled(true);
+            chartPanel.setDomainZoomable(false);
+            chartPanel.setRangeZoomable(false);
+
+            graphPanel.add(chartPanel, BorderLayout.CENTER);
+        }
+
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 220)));
+        wrapper.setBackground(Color.WHITE);
+        wrapper.add(graphPanel, BorderLayout.CENTER);
+
+        block.add(header, BorderLayout.NORTH);
+        block.add(wrapper, BorderLayout.CENTER);
+
+        return block;
     }
 
     private JPanel createSummaryLabel(String label, String value) {
@@ -173,36 +438,7 @@ public class ResultsDashboard extends JFrame {
         return row;
     }
 
-    private JPanel createTablePanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Algorithm Performance Comparison"));
-        panel.setBackground(Color.WHITE);
-
-        resultsTable = new JTable();
-        resultsTable.setRowHeight(28);
-        resultsTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
-        resultsTable.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        resultsTable.setFillsViewportHeight(true);
-        resultsTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
-
-        JScrollPane scrollPane = new JScrollPane(resultsTable);
-        panel.add(scrollPane, BorderLayout.CENTER);
-
-        return panel;
-    }
-
-    private JPanel createChartsPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Charts"));
-        panel.setBackground(Color.WHITE);
-
-        tabbedPane = new JTabbedPane();
-        panel.add(tabbedPane, BorderLayout.CENTER);
-
-        return panel;
-    }
-
-    private void loadTable(List<PerformanceMetrics> metricsList) {
+    private void loadTableInto(JTable table, List<PerformanceMetrics> metricsList) {
         String[] columns = new String[metricsList.size() + 1];
         columns[0] = "Metric";
 
@@ -231,7 +467,7 @@ public class ResultsDashboard extends JFrame {
             }
         };
 
-        resultsTable.setModel(model);
+        table.setModel(model);
     }
 
     private Object[] buildRow(String metricName, List<PerformanceMetrics> metricsList, String type) {
@@ -281,72 +517,138 @@ public class ResultsDashboard extends JFrame {
         return row;
     }
 
-    private void loadCharts(List<PerformanceMetrics> metricsList) {
-        tabbedPane.removeAll();
+    private List<List<PerformanceMetrics>> splitMetricsByCase(List<PerformanceMetrics> source) {
+        List<List<PerformanceMetrics>> result = new ArrayList<>();
 
-        tabbedPane.addTab("Overview", createOverviewPanel(metricsList));
-        tabbedPane.addTab("Makespan", createChartTab("Makespan Comparison", "Algorithm", "Makespan (seconds)", metricsList, "makespan"));
-        tabbedPane.addTab("Throughput", createChartTab("Throughput Comparison", "Algorithm", "Throughput (tasks/sec)", metricsList, "throughput"));
-        tabbedPane.addTab("Turnaround", createChartTab("Turnaround Time Comparison", "Algorithm", "Turnaround Time (seconds)", metricsList, "turnaround"));
-        tabbedPane.addTab("Load Balance", createChartTab("Load Balance Variance Comparison", "Algorithm", "Variance", metricsList, "load"));
-        tabbedPane.addTab("Fairness", createChartTab("Fairness Index Comparison", "Algorithm", "Fairness Index", metricsList, "fairness"));
-        tabbedPane.addTab("Overloaded VMs", createChartTab("Overloaded VMs Comparison", "Algorithm", "Count", metricsList, "overloaded"));
-        tabbedPane.addTab("Utilization", createUtilizationPanel(metricsList));
+        int algorithmsPerCase = "Run All Algorithms".equals(selectedAlgorithm) ? 4 : 1;
+        int index = 0;
+
+        for (int i = 0; i < testCases.size(); i++) {
+            List<PerformanceMetrics> oneCase = new ArrayList<>();
+
+            for (int j = 0; j < algorithmsPerCase && index < source.size(); j++) {
+                oneCase.add(source.get(index));
+                index++;
+            }
+
+            result.add(oneCase);
+        }
+
+        return result;
     }
 
-    private JPanel createOverviewPanel(List<PerformanceMetrics> metricsList) {
-        JPanel panel = new JPanel(new GridLayout(1, 2, 18, 18));
-        panel.setBorder(BorderFactory.createEmptyBorder(18, 18, 18, 18));
-        panel.setBackground(Color.WHITE);
+    private List<PerformanceMetrics> sortMetrics(List<PerformanceMetrics> metricsList) {
+        List<PerformanceMetrics> ordered = new ArrayList<>();
 
-        ChartPanel comprehensivePanel = new ChartPanel(createComprehensiveChart(metricsList));
-        ChartPanel utilizationPanel = new ChartPanel(createResourceUtilizationChart(metricsList));
+        addIfExists(ordered, metricsList, "Traditional RR");
+        addIfExists(ordered, metricsList, "MARR");
+        addIfExists(ordered, metricsList, "MMRR");
+        addIfExists(ordered, metricsList, "MMARRA");
 
-        comprehensivePanel.setPreferredSize(new Dimension(600, 420));
-        utilizationPanel.setPreferredSize(new Dimension(600, 420));
+        if (!ordered.isEmpty()) {
+            return ordered;
+        }
 
-        comprehensivePanel.setMouseWheelEnabled(true);
-        utilizationPanel.setMouseWheelEnabled(true);
-
-        comprehensivePanel.setDomainZoomable(false);
-        comprehensivePanel.setRangeZoomable(false);
-        utilizationPanel.setDomainZoomable(false);
-        utilizationPanel.setRangeZoomable(false);
-
-        panel.add(comprehensivePanel);
-        panel.add(utilizationPanel);
-
-        return panel;
+        return metricsList;
     }
 
-    private JPanel createChartTab(String title, String xLabel, String yLabel, List<PerformanceMetrics> metricsList, String type) {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-
-        ChartPanel chartPanel = new ChartPanel(createChart(title, xLabel, yLabel, metricsList, type));
-        chartPanel.setPreferredSize(new Dimension(1150, 560));
-        chartPanel.setMouseWheelEnabled(true);
-        chartPanel.setDomainZoomable(false);
-        chartPanel.setRangeZoomable(false);
-
-        panel.add(chartPanel, BorderLayout.CENTER);
-        return panel;
+    private void addIfExists(List<PerformanceMetrics> ordered, List<PerformanceMetrics> source, String algorithmName) {
+        for (PerformanceMetrics metric : source) {
+            if (metric.getAlgorithmName().equals(algorithmName)) {
+                ordered.add(metric);
+                return;
+            }
+        }
     }
 
-    private JPanel createUtilizationPanel(List<PerformanceMetrics> metricsList) {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+    private List<PerformanceMetrics> aggregateAllCases() {
+        List<List<PerformanceMetrics>> perCase = splitMetricsByCase(collector.getMetricsList());
 
-        ChartPanel chartPanel = new ChartPanel(createResourceUtilizationChart(metricsList));
-        chartPanel.setPreferredSize(new Dimension(1150, 560));
-        chartPanel.setMouseWheelEnabled(true);
-        chartPanel.setDomainZoomable(false);
-        chartPanel.setRangeZoomable(false);
+        List<PerformanceMetrics> traditional = new ArrayList<>();
+        List<PerformanceMetrics> marr = new ArrayList<>();
+        List<PerformanceMetrics> mmrr = new ArrayList<>();
+        List<PerformanceMetrics> mmarra = new ArrayList<>();
 
-        panel.add(chartPanel, BorderLayout.CENTER);
-        return panel;
+        for (List<PerformanceMetrics> caseMetrics : perCase) {
+            for (PerformanceMetrics m : caseMetrics) {
+                if ("Traditional RR".equals(m.getAlgorithmName())) traditional.add(m);
+                else if ("MARR".equals(m.getAlgorithmName())) marr.add(m);
+                else if ("MMRR".equals(m.getAlgorithmName())) mmrr.add(m);
+                else if ("MMARRA".equals(m.getAlgorithmName())) mmarra.add(m);
+            }
+        }
+
+        List<PerformanceMetrics> result = new ArrayList<>();
+        if (!traditional.isEmpty()) result.add(averageMetrics("Traditional RR", traditional));
+        if (!marr.isEmpty()) result.add(averageMetrics("MARR", marr));
+        if (!mmrr.isEmpty()) result.add(averageMetrics("MMRR", mmrr));
+        if (!mmarra.isEmpty()) result.add(averageMetrics("MMARRA", mmarra));
+
+        return result;
+    }
+
+    private PerformanceMetrics averageMetrics(String algorithmName, List<PerformanceMetrics> list) {
+        double makespan = 0;
+        double waiting = 0;
+        double response = 0;
+        double turnaround = 0;
+        double throughput = 0;
+        double cpu = 0;
+        double memory = 0;
+        double bandwidth = 0;
+        double load = 0;
+        double fairness = 0;
+        int overloaded = 0;
+
+        for (PerformanceMetrics m : list) {
+            makespan += m.getMakespan();
+            waiting += m.getAvgWaitingTime();
+            response += m.getAvgResponseTime();
+            turnaround += m.getAvgTurnaroundTime();
+            throughput += m.getThroughput();
+            cpu += m.getCpuUtilization();
+            memory += m.getMemoryUtilization();
+            bandwidth += m.getBwUtilization();
+            load += m.getLoadBalanceVariance();
+            fairness += m.getFairnessIndex();
+            overloaded += m.getServerOverloadCount();
+        }
+
+        int n = list.size();
+        return new AggregatedPerformanceMetrics(
+                algorithmName,
+                makespan / n,
+                waiting / n,
+                response / n,
+                turnaround / n,
+                throughput / n,
+                cpu / n,
+                memory / n,
+                bandwidth / n,
+                load / n,
+                fairness / n,
+                (int) Math.round((double) overloaded / n)
+        );
+    }
+
+    private PerformanceMetrics getBestMakespan(List<PerformanceMetrics> metrics) {
+        PerformanceMetrics best = metrics.get(0);
+        for (PerformanceMetrics metric : metrics) {
+            if (metric.getMakespan() < best.getMakespan()) {
+                best = metric;
+            }
+        }
+        return best;
+    }
+
+    private PerformanceMetrics getBestThroughput(List<PerformanceMetrics> metrics) {
+        PerformanceMetrics best = metrics.get(0);
+        for (PerformanceMetrics metric : metrics) {
+            if (metric.getThroughput() > best.getThroughput()) {
+                best = metric;
+            }
+        }
+        return best;
     }
 
     private JFreeChart createComprehensiveChart(List<PerformanceMetrics> metricsList) {
@@ -390,47 +692,11 @@ public class ResultsDashboard extends JFrame {
                 dataset
         );
 
-        chart.setBackgroundPaint(Color.WHITE);
-        chart.getTitle().setFont(new Font("Segoe UI", Font.BOLD, 20));
-
-        CategoryPlot plot = chart.getCategoryPlot();
-        plot.setBackgroundPaint(Color.WHITE);
-        plot.setOutlinePaint(new Color(220, 220, 220));
-        plot.setRangeGridlinePaint(new Color(215, 215, 215));
-        plot.setDomainGridlinesVisible(false);
-
-        plot.getDomainAxis().setLabelFont(new Font("Segoe UI", Font.BOLD, 15));
-        plot.getDomainAxis().setTickLabelFont(new Font("Segoe UI", Font.PLAIN, 12));
-        plot.getDomainAxis().setCategoryMargin(0.18);
-
-        plot.getRangeAxis().setLabelFont(new Font("Segoe UI", Font.BOLD, 15));
-        plot.getRangeAxis().setTickLabelFont(new Font("Segoe UI", Font.PLAIN, 12));
-        plot.getRangeAxis().setLowerMargin(0.05);
-        plot.getRangeAxis().setUpperMargin(0.15);
-
-        BarRenderer renderer = (BarRenderer) plot.getRenderer();
-        renderer.setMaximumBarWidth(0.10);
-        renderer.setItemMargin(0.08);
-        renderer.setShadowVisible(false);
-        renderer.setDrawBarOutline(false);
-
-        renderer.setSeriesPaint(0, new Color(76, 175, 80));
-        renderer.setSeriesPaint(1, new Color(33, 150, 243));
-        renderer.setSeriesPaint(2, new Color(156, 39, 176));
-
-        renderer.setDefaultItemLabelsVisible(true);
-        renderer.setDefaultItemLabelGenerator(
-                new StandardCategoryItemLabelGenerator("{2}", NumberFormat.getNumberInstance())
-        );
-        renderer.setDefaultItemLabelFont(new Font("Segoe UI", Font.BOLD, 11));
-        renderer.setDefaultPositiveItemLabelPosition(
-                new ItemLabelPosition(ItemLabelAnchor.OUTSIDE12, TextAnchor.BOTTOM_CENTER)
-        );
-
-        if (chart.getLegend() != null) {
-            chart.getLegend().setItemFont(new Font("Segoe UI", Font.PLAIN, 12));
-            chart.getLegend().setBorder(0, 0, 0, 0);
-        }
+        styleGroupedChart(chart, new Color[]{
+                new Color(76, 175, 80),
+                new Color(33, 150, 243),
+                new Color(156, 39, 176)
+        }, 0.10, 0.08);
 
         return chart;
     }
@@ -451,47 +717,11 @@ public class ResultsDashboard extends JFrame {
                 dataset
         );
 
-        chart.setBackgroundPaint(Color.WHITE);
-        chart.getTitle().setFont(new Font("Segoe UI", Font.BOLD, 20));
-
-        CategoryPlot plot = chart.getCategoryPlot();
-        plot.setBackgroundPaint(Color.WHITE);
-        plot.setOutlinePaint(new Color(220, 220, 220));
-        plot.setRangeGridlinePaint(new Color(215, 215, 215));
-        plot.setDomainGridlinesVisible(false);
-
-        plot.getDomainAxis().setLabelFont(new Font("Segoe UI", Font.BOLD, 15));
-        plot.getDomainAxis().setTickLabelFont(new Font("Segoe UI", Font.PLAIN, 12));
-        plot.getDomainAxis().setCategoryMargin(0.18);
-
-        plot.getRangeAxis().setLabelFont(new Font("Segoe UI", Font.BOLD, 15));
-        plot.getRangeAxis().setTickLabelFont(new Font("Segoe UI", Font.PLAIN, 12));
-        plot.getRangeAxis().setLowerMargin(0.05);
-        plot.getRangeAxis().setUpperMargin(0.15);
-
-        BarRenderer renderer = (BarRenderer) plot.getRenderer();
-        renderer.setMaximumBarWidth(0.10);
-        renderer.setItemMargin(0.08);
-        renderer.setShadowVisible(false);
-        renderer.setDrawBarOutline(false);
-
-        renderer.setSeriesPaint(0, new Color(76, 175, 80));
-        renderer.setSeriesPaint(1, new Color(33, 150, 243));
-        renderer.setSeriesPaint(2, new Color(156, 39, 176));
-
-        renderer.setDefaultItemLabelsVisible(true);
-        renderer.setDefaultItemLabelGenerator(
-                new StandardCategoryItemLabelGenerator("{2}", NumberFormat.getNumberInstance())
-        );
-        renderer.setDefaultItemLabelFont(new Font("Segoe UI", Font.BOLD, 11));
-        renderer.setDefaultPositiveItemLabelPosition(
-                new ItemLabelPosition(ItemLabelAnchor.OUTSIDE12, TextAnchor.BOTTOM_CENTER)
-        );
-
-        if (chart.getLegend() != null) {
-            chart.getLegend().setItemFont(new Font("Segoe UI", Font.PLAIN, 12));
-            chart.getLegend().setBorder(0, 0, 0, 0);
-        }
+        styleGroupedChart(chart, new Color[]{
+                new Color(76, 175, 80),
+                new Color(33, 150, 243),
+                new Color(156, 39, 176)
+        }, 0.10, 0.08);
 
         return chart;
     }
@@ -528,52 +758,58 @@ public class ResultsDashboard extends JFrame {
 
         JFreeChart chart = ChartFactory.createBarChart(title, xLabel, yLabel, dataset);
 
+        styleGroupedChart(chart, new Color[]{
+                new Color(66, 133, 244),
+                new Color(251, 188, 5),
+                new Color(234, 67, 53),
+                new Color(52, 168, 83)
+        }, 0.16, 0.02);
+
+        return chart;
+    }
+
+    private void styleGroupedChart(JFreeChart chart, Color[] seriesColors, double maxBarWidth, double itemMargin) {
         chart.setBackgroundPaint(Color.WHITE);
-        chart.getTitle().setFont(new Font("Segoe UI", Font.BOLD, 22));
+        chart.getTitle().setFont(new Font("Segoe UI", Font.BOLD, 18));
 
         CategoryPlot plot = chart.getCategoryPlot();
         plot.setBackgroundPaint(Color.WHITE);
         plot.setOutlinePaint(new Color(220, 220, 220));
-        plot.setRangeGridlinePaint(new Color(215, 215, 215));
+        plot.setRangeGridlinePaint(new Color(230, 230, 230));
         plot.setDomainGridlinesVisible(false);
 
-        plot.getDomainAxis().setLabelFont(new Font("Segoe UI", Font.BOLD, 15));
-        plot.getDomainAxis().setTickLabelFont(new Font("Segoe UI", Font.PLAIN, 13));
-        plot.getDomainAxis().setCategoryMargin(0.22);
-        plot.getDomainAxis().setLowerMargin(0.04);
-        plot.getDomainAxis().setUpperMargin(0.04);
+        plot.getDomainAxis().setLabelFont(new Font("Segoe UI", Font.BOLD, 13));
+        plot.getDomainAxis().setTickLabelFont(new Font("Segoe UI", Font.PLAIN, 11));
+        plot.getDomainAxis().setCategoryMargin(0.16);
 
-        plot.getRangeAxis().setLabelFont(new Font("Segoe UI", Font.BOLD, 15));
-        plot.getRangeAxis().setTickLabelFont(new Font("Segoe UI", Font.PLAIN, 12));
-        plot.getRangeAxis().setLowerMargin(0.08);
-        plot.getRangeAxis().setUpperMargin(0.18);
+        plot.getRangeAxis().setLabelFont(new Font("Segoe UI", Font.BOLD, 13));
+        plot.getRangeAxis().setTickLabelFont(new Font("Segoe UI", Font.PLAIN, 11));
+        plot.getRangeAxis().setLowerMargin(0.04);
+        plot.getRangeAxis().setUpperMargin(0.12);
 
         BarRenderer renderer = (BarRenderer) plot.getRenderer();
-        renderer.setMaximumBarWidth(0.16);
-        renderer.setItemMargin(0.02);
+        renderer.setMaximumBarWidth(maxBarWidth);
+        renderer.setItemMargin(itemMargin);
         renderer.setShadowVisible(false);
         renderer.setDrawBarOutline(false);
 
-        renderer.setSeriesPaint(0, new Color(66, 133, 244));   // Traditional RR
-        renderer.setSeriesPaint(1, new Color(251, 188, 5));    // MARR
-        renderer.setSeriesPaint(2, new Color(234, 67, 53));    // MMRR
-        renderer.setSeriesPaint(3, new Color(52, 168, 83));    // MMARRA
+        for (int i = 0; i < seriesColors.length; i++) {
+            renderer.setSeriesPaint(i, seriesColors[i]);
+        }
 
         renderer.setDefaultItemLabelsVisible(true);
         renderer.setDefaultItemLabelGenerator(
                 new StandardCategoryItemLabelGenerator("{2}", NumberFormat.getNumberInstance())
         );
-        renderer.setDefaultItemLabelFont(new Font("Segoe UI", Font.BOLD, 12));
+        renderer.setDefaultItemLabelFont(new Font("Segoe UI", Font.BOLD, 10));
         renderer.setDefaultPositiveItemLabelPosition(
                 new ItemLabelPosition(ItemLabelAnchor.OUTSIDE12, TextAnchor.BOTTOM_CENTER)
         );
 
         if (chart.getLegend() != null) {
-            chart.getLegend().setItemFont(new Font("Segoe UI", Font.PLAIN, 12));
+            chart.getLegend().setItemFont(new Font("Segoe UI", Font.PLAIN, 10));
             chart.getLegend().setBorder(0, 0, 0, 0);
         }
-
-        return chart;
     }
 
     private void exportCsv() {
@@ -594,47 +830,107 @@ public class ResultsDashboard extends JFrame {
         }
     }
 
-    private List<PerformanceMetrics> sortMetrics(List<PerformanceMetrics> metricsList) {
-        List<PerformanceMetrics> ordered = new ArrayList<>();
+    private static class AggregatedPerformanceMetrics extends PerformanceMetrics {
+        private final String algorithmName;
+        private final double makespan;
+        private final double avgWaitingTime;
+        private final double avgResponseTime;
+        private final double avgTurnaroundTime;
+        private final double throughput;
+        private final double cpuUtilization;
+        private final double memoryUtilization;
+        private final double bwUtilization;
+        private final double loadBalanceVariance;
+        private final double fairnessIndex;
+        private final int serverOverloadCount;
 
-        addIfExists(ordered, metricsList, "Traditional RR");
-        addIfExists(ordered, metricsList, "MARR");
-        addIfExists(ordered, metricsList, "MMRR");
-        addIfExists(ordered, metricsList, "MMARRA");
-
-        return ordered;
-    }
-
-    private void addIfExists(List<PerformanceMetrics> ordered, List<PerformanceMetrics> source, String algorithmName) {
-        for (PerformanceMetrics metric : source) {
-            if (metric.getAlgorithmName().equals(algorithmName)) {
-                ordered.add(metric);
-                return;
-            }
+        public AggregatedPerformanceMetrics(
+                String algorithmName,
+                double makespan,
+                double avgWaitingTime,
+                double avgResponseTime,
+                double avgTurnaroundTime,
+                double throughput,
+                double cpuUtilization,
+                double memoryUtilization,
+                double bwUtilization,
+                double loadBalanceVariance,
+                double fairnessIndex,
+                int serverOverloadCount
+        ) {
+            super(algorithmName, new ArrayList<>(), new ArrayList<>());
+            this.algorithmName = algorithmName;
+            this.makespan = makespan;
+            this.avgWaitingTime = avgWaitingTime;
+            this.avgResponseTime = avgResponseTime;
+            this.avgTurnaroundTime = avgTurnaroundTime;
+            this.throughput = throughput;
+            this.cpuUtilization = cpuUtilization;
+            this.memoryUtilization = memoryUtilization;
+            this.bwUtilization = bwUtilization;
+            this.loadBalanceVariance = loadBalanceVariance;
+            this.fairnessIndex = fairnessIndex;
+            this.serverOverloadCount = serverOverloadCount;
         }
-    }
 
-    private PerformanceMetrics getBestMakespan(List<PerformanceMetrics> metrics) {
-        PerformanceMetrics best = metrics.get(0);
-
-        for (PerformanceMetrics metric : metrics) {
-            if (metric.getMakespan() < best.getMakespan()) {
-                best = metric;
-            }
+        @Override
+        public String getAlgorithmName() {
+            return algorithmName;
         }
 
-        return best;
-    }
-
-    private PerformanceMetrics getBestThroughput(List<PerformanceMetrics> metrics) {
-        PerformanceMetrics best = metrics.get(0);
-
-        for (PerformanceMetrics metric : metrics) {
-            if (metric.getThroughput() > best.getThroughput()) {
-                best = metric;
-            }
+        @Override
+        public double getMakespan() {
+            return makespan;
         }
 
-        return best;
+        @Override
+        public double getAvgWaitingTime() {
+            return avgWaitingTime;
+        }
+
+        @Override
+        public double getAvgResponseTime() {
+            return avgResponseTime;
+        }
+
+        @Override
+        public double getAvgTurnaroundTime() {
+            return avgTurnaroundTime;
+        }
+
+        @Override
+        public double getThroughput() {
+            return throughput;
+        }
+
+        @Override
+        public double getCpuUtilization() {
+            return cpuUtilization;
+        }
+
+        @Override
+        public double getMemoryUtilization() {
+            return memoryUtilization;
+        }
+
+        @Override
+        public double getBwUtilization() {
+            return bwUtilization;
+        }
+
+        @Override
+        public double getLoadBalanceVariance() {
+            return loadBalanceVariance;
+        }
+
+        @Override
+        public double getFairnessIndex() {
+            return fairnessIndex;
+        }
+
+        @Override
+        public int getServerOverloadCount() {
+            return serverOverloadCount;
+        }
     }
 }

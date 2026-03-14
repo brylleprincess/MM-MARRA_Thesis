@@ -2,27 +2,31 @@ package com.thesis.ui;
 
 import com.thesis.Main;
 import com.thesis.metrics.MetricsCollector;
+import com.thesis.metrics.PerformanceMetrics;
 
 import javax.swing.*;
 import java.awt.*;
-
-/**
- * @author: Princess Brylle N. Tadena
- */
-
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 public class SimulatorDashboard extends JFrame {
 
-    private JTextField hostsField;
-    private JTextField vmsField;
-    private JTextField cloudletsField;
+    private JTextField testCasesField;
+    private JTextField minHostsField;
+    private JTextField maxHostsField;
+    private JTextField minVmsField;
+    private JTextField maxVmsField;
+    private JTextField minCloudletsField;
+    private JTextField maxCloudletsField;
+
     private JComboBox<String> algorithmCombo;
     private JButton startButton;
     private JLabel statusLabel;
 
     public SimulatorDashboard() {
         setTitle("Cloud Task Scheduling Simulator - Step 1");
-        setSize(520, 360);
+        setSize(620, 520);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
@@ -39,7 +43,7 @@ public class SimulatorDashboard extends JFrame {
         JLabel title = new JLabel("Simulation Settings");
         title.setFont(new Font("Segoe UI", Font.BOLD, 22));
 
-        JLabel subtitle = new JLabel("Configure inputs and choose a scheduling algorithm");
+        JLabel subtitle = new JLabel("Enter number of test cases and ranges for Hosts, VMs, and Cloudlets");
         subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         subtitle.setForeground(Color.DARK_GRAY);
 
@@ -62,12 +66,19 @@ public class SimulatorDashboard extends JFrame {
         ));
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.insets = new Insets(8, 10, 8, 10);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        hostsField = new JTextField("20", 15);
-        vmsField = new JTextField("15", 15);
-        cloudletsField = new JTextField("500", 15);
+        testCasesField = new JTextField("10", 15);
+
+        minHostsField = new JTextField("8", 10);
+        maxHostsField = new JTextField("12", 10);
+
+        minVmsField = new JTextField("10", 10);
+        maxVmsField = new JTextField("16", 10);
+
+        minCloudletsField = new JTextField("200", 10);
+        maxCloudletsField = new JTextField("500", 10);
 
         algorithmCombo = new JComboBox<>(new String[]{
                 "Traditional RR",
@@ -81,37 +92,55 @@ public class SimulatorDashboard extends JFrame {
         startButton.setPreferredSize(new Dimension(180, 38));
         startButton.addActionListener(e -> runSimulation());
 
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        form.add(new JLabel("Number of Hosts:"), gbc);
+        int row = 0;
 
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        form.add(new JLabel("Number of Test Cases:"), gbc);
         gbc.gridx = 1;
-        form.add(hostsField, gbc);
+        gbc.gridwidth = 2;
+        form.add(testCasesField, gbc);
 
+        row++;
+        gbc.gridwidth = 1;
         gbc.gridx = 0;
-        gbc.gridy = 1;
-        form.add(new JLabel("Number of VMs:"), gbc);
-
+        gbc.gridy = row;
+        form.add(new JLabel("Hosts Range:"), gbc);
         gbc.gridx = 1;
-        form.add(vmsField, gbc);
+        form.add(minHostsField, gbc);
+        gbc.gridx = 2;
+        form.add(maxHostsField, gbc);
 
+        row++;
         gbc.gridx = 0;
-        gbc.gridy = 2;
-        form.add(new JLabel("Number of Cloudlets:"), gbc);
-
+        gbc.gridy = row;
+        form.add(new JLabel("VMs Range:"), gbc);
         gbc.gridx = 1;
-        form.add(cloudletsField, gbc);
+        form.add(minVmsField, gbc);
+        gbc.gridx = 2;
+        form.add(maxVmsField, gbc);
 
+        row++;
         gbc.gridx = 0;
-        gbc.gridy = 3;
+        gbc.gridy = row;
+        form.add(new JLabel("Cloudlets Range:"), gbc);
+        gbc.gridx = 1;
+        form.add(minCloudletsField, gbc);
+        gbc.gridx = 2;
+        form.add(maxCloudletsField, gbc);
+
+        row++;
+        gbc.gridx = 0;
+        gbc.gridy = row;
         form.add(new JLabel("Scheduling Algorithm:"), gbc);
-
         gbc.gridx = 1;
+        gbc.gridwidth = 2;
         form.add(algorithmCombo, gbc);
 
+        row++;
         gbc.gridx = 0;
-        gbc.gridy = 4;
-        gbc.gridwidth = 2;
+        gbc.gridy = row;
+        gbc.gridwidth = 3;
         gbc.anchor = GridBagConstraints.CENTER;
         form.add(startButton, gbc);
 
@@ -131,18 +160,31 @@ public class SimulatorDashboard extends JFrame {
     }
 
     private void runSimulation() {
-        int hosts;
-        int vms;
-        int cloudlets;
+        int testCases;
+        int minHosts;
+        int maxHosts;
+        int minVms;
+        int maxVms;
+        int minCloudlets;
+        int maxCloudlets;
 
         try {
-            hosts = Integer.parseInt(hostsField.getText().trim());
-            vms = Integer.parseInt(vmsField.getText().trim());
-            cloudlets = Integer.parseInt(cloudletsField.getText().trim());
+            testCases = Integer.parseInt(testCasesField.getText().trim());
+            minHosts = Integer.parseInt(minHostsField.getText().trim());
+            maxHosts = Integer.parseInt(maxHostsField.getText().trim());
+            minVms = Integer.parseInt(minVmsField.getText().trim());
+            maxVms = Integer.parseInt(maxVmsField.getText().trim());
+            minCloudlets = Integer.parseInt(minCloudletsField.getText().trim());
+            maxCloudlets = Integer.parseInt(maxCloudletsField.getText().trim());
+
+            if (testCases <= 0) throw new IllegalArgumentException("Test cases must be greater than 0.");
+            if (minHosts > maxHosts) throw new IllegalArgumentException("Hosts min must be <= max.");
+            if (minVms > maxVms) throw new IllegalArgumentException("VMs min must be <= max.");
+            if (minCloudlets > maxCloudlets) throw new IllegalArgumentException("Cloudlets min must be <= max.");
         } catch (Exception e) {
             JOptionPane.showMessageDialog(
                     this,
-                    "Please enter valid integer values.",
+                    "Please enter valid values.\n" + e.getMessage(),
                     "Input Error",
                     JOptionPane.ERROR_MESSAGE
             );
@@ -155,15 +197,34 @@ public class SimulatorDashboard extends JFrame {
         statusLabel.setText("Running simulation...");
 
         SwingWorker<MetricsCollector, Void> worker = new SwingWorker<>() {
+            private final List<int[]> generatedCases = buildRandomTestCases(
+                    testCases,
+                    minHosts, maxHosts,
+                    minVms, maxVms,
+                    minCloudlets, maxCloudlets
+            );
+
             @Override
             protected MetricsCollector doInBackground() {
-                if ("Run All Algorithms".equals(selectedAlgorithm)) {
-                    return Main.runAllSimulations(hosts, vms, cloudlets);
+                MetricsCollector mergedCollector = new MetricsCollector();
+
+                for (int[] testCase : generatedCases) {
+                    int hosts = testCase[0];
+                    int vms = testCase[1];
+                    int cloudlets = testCase[2];
+
+                    if ("Run All Algorithms".equals(selectedAlgorithm)) {
+                        MetricsCollector oneRun = Main.runAllSimulations(hosts, vms, cloudlets);
+                        for (PerformanceMetrics m : oneRun.getMetricsList()) {
+                            mergedCollector.addMetrics(m);
+                        }
+                    } else {
+                        PerformanceMetrics metrics = Main.runSimulation(hosts, vms, cloudlets, selectedAlgorithm);
+                        mergedCollector.addMetrics(metrics);
+                    }
                 }
 
-                MetricsCollector collector = new MetricsCollector();
-                collector.addMetrics(Main.runSimulation(hosts, vms, cloudlets, selectedAlgorithm));
-                return collector;
+                return mergedCollector;
             }
 
             @Override
@@ -174,9 +235,7 @@ public class SimulatorDashboard extends JFrame {
 
                     ResultsDashboard resultsWindow = new ResultsDashboard(
                             collector,
-                            hosts,
-                            vms,
-                            cloudlets,
+                            generatedCases,
                             selectedAlgorithm
                     );
                     resultsWindow.setVisible(true);
@@ -196,5 +255,32 @@ public class SimulatorDashboard extends JFrame {
         };
 
         worker.execute();
+    }
+
+    private List<int[]> buildRandomTestCases(
+            int testCases,
+            int minHosts, int maxHosts,
+            int minVms, int maxVms,
+            int minCloudlets, int maxCloudlets
+    ) {
+        List<int[]> list = new ArrayList<>();
+        Random random = new Random();
+
+        for (int i = 0; i < testCases; i++) {
+            int hosts = randomInRange(random, minHosts, maxHosts);
+            int vms = randomInRange(random, minVms, maxVms);
+            int cloudlets = randomInRange(random, minCloudlets, maxCloudlets);
+
+            list.add(new int[]{hosts, vms, cloudlets});
+        }
+
+        return list;
+    }
+
+    private int randomInRange(Random random, int min, int max) {
+        if (min == max) {
+            return min;
+        }
+        return random.nextInt(max - min + 1) + min;
     }
 }
