@@ -13,13 +13,16 @@ import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.renderer.category.BarRenderer;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.category.DefaultCategoryDataset;
-
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
+
+/**
+ * @author: Princess Brylle N. Tadena
+ */
 
 public class ResultsDashboard extends JFrame {
 

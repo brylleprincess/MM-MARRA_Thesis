@@ -3,12 +3,15 @@ package com.thesis.ui;
 import com.thesis.Main;
 import com.thesis.metrics.MetricsCollector;
 import com.thesis.metrics.PerformanceMetrics;
-
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+/**
+ * @author: Princess Brylle N. Tadena
+ */
 
 public class SimulatorDashboard extends JFrame {
 
