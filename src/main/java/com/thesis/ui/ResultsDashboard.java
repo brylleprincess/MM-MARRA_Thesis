@@ -13,6 +13,7 @@ import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.renderer.category.BarRenderer;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.category.DefaultCategoryDataset;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -30,6 +31,13 @@ public class ResultsDashboard extends JFrame {
     private final List<int[]> testCases;
     private final String selectedAlgorithm;
 
+    private final int inputMinHosts;
+    private final int inputMaxHosts;
+    private final int inputMinVms;
+    private final int inputMaxVms;
+    private final int inputMinCloudlets;
+    private final int inputMaxCloudlets;
+
     private JPanel rightContentPanel;
     private CardLayout rightCardLayout;
 
@@ -38,10 +46,25 @@ public class ResultsDashboard extends JFrame {
 
     private String selectedChartType = "overview";
 
-    public ResultsDashboard(MetricsCollector collector, List<int[]> testCases, String selectedAlgorithm) {
+    public ResultsDashboard(MetricsCollector collector,
+                            List<int[]> testCases,
+                            String selectedAlgorithm,
+                            int inputMinHosts,
+                            int inputMaxHosts,
+                            int inputMinVms,
+                            int inputMaxVms,
+                            int inputMinCloudlets,
+                            int inputMaxCloudlets) {
         this.collector = collector;
         this.testCases = testCases;
         this.selectedAlgorithm = selectedAlgorithm;
+
+        this.inputMinHosts = inputMinHosts;
+        this.inputMaxHosts = inputMaxHosts;
+        this.inputMinVms = inputMinVms;
+        this.inputMaxVms = inputMaxVms;
+        this.inputMinCloudlets = inputMinCloudlets;
+        this.inputMaxCloudlets = inputMaxCloudlets;
 
         setTitle("Cloud Task Scheduling Simulator - Step 2 Results");
         setSize(1320, 820);
@@ -107,26 +130,10 @@ public class ResultsDashboard extends JFrame {
         ));
         panel.setBackground(Color.WHITE);
 
-        int minHosts = Integer.MAX_VALUE;
-        int maxHosts = Integer.MIN_VALUE;
-        int minVms = Integer.MAX_VALUE;
-        int maxVms = Integer.MIN_VALUE;
-        int minCloudlets = Integer.MAX_VALUE;
-        int maxCloudlets = Integer.MIN_VALUE;
-
-        for (int[] t : testCases) {
-            minHosts = Math.min(minHosts, t[0]);
-            maxHosts = Math.max(maxHosts, t[0]);
-            minVms = Math.min(minVms, t[1]);
-            maxVms = Math.max(maxVms, t[1]);
-            minCloudlets = Math.min(minCloudlets, t[2]);
-            maxCloudlets = Math.max(maxCloudlets, t[2]);
-        }
-
         panel.add(createSummaryLabel("Test Cases", String.valueOf(testCases.size())));
-        panel.add(createSummaryLabel("Hosts Range", minHosts + " - " + maxHosts));
-        panel.add(createSummaryLabel("VMs Range", minVms + " - " + maxVms));
-        panel.add(createSummaryLabel("Cloudlets Range", minCloudlets + " - " + maxCloudlets));
+        panel.add(createSummaryLabel("Hosts Range", inputMinHosts + " - " + inputMaxHosts));
+        panel.add(createSummaryLabel("VMs Range", inputMinVms + " - " + inputMaxVms));
+        panel.add(createSummaryLabel("Cloudlets Range", inputMinCloudlets + " - " + inputMaxCloudlets));
         panel.add(createSummaryLabel("Selection", selectedAlgorithm));
         panel.add(createSummaryLabel("Algorithms Shown", "Run All Algorithms".equals(selectedAlgorithm) ? "4" : "1"));
 
@@ -564,134 +571,28 @@ public class ResultsDashboard extends JFrame {
         }
     }
 
-    private List<PerformanceMetrics> aggregateAllCases() {
-        List<List<PerformanceMetrics>> perCase = splitMetricsByCase(collector.getMetricsList());
-
-        List<PerformanceMetrics> traditional = new ArrayList<>();
-        List<PerformanceMetrics> marr = new ArrayList<>();
-        List<PerformanceMetrics> mmrr = new ArrayList<>();
-        List<PerformanceMetrics> mmarra = new ArrayList<>();
-
-        for (List<PerformanceMetrics> caseMetrics : perCase) {
-            for (PerformanceMetrics m : caseMetrics) {
-                if ("Traditional RR".equals(m.getAlgorithmName())) traditional.add(m);
-                else if ("MARR".equals(m.getAlgorithmName())) marr.add(m);
-                else if ("MMRR".equals(m.getAlgorithmName())) mmrr.add(m);
-                else if ("MMARRA".equals(m.getAlgorithmName())) mmarra.add(m);
-            }
-        }
-
-        List<PerformanceMetrics> result = new ArrayList<>();
-        if (!traditional.isEmpty()) result.add(averageMetrics("Traditional RR", traditional));
-        if (!marr.isEmpty()) result.add(averageMetrics("MARR", marr));
-        if (!mmrr.isEmpty()) result.add(averageMetrics("MMRR", mmrr));
-        if (!mmarra.isEmpty()) result.add(averageMetrics("MMARRA", mmarra));
-
-        return result;
-    }
-
-    private PerformanceMetrics averageMetrics(String algorithmName, List<PerformanceMetrics> list) {
-        double makespan = 0;
-        double waiting = 0;
-        double response = 0;
-        double turnaround = 0;
-        double throughput = 0;
-        double cpu = 0;
-        double memory = 0;
-        double bandwidth = 0;
-        double load = 0;
-        double fairness = 0;
-        int overloaded = 0;
-
-        for (PerformanceMetrics m : list) {
-            makespan += m.getMakespan();
-            waiting += m.getAvgWaitingTime();
-            response += m.getAvgResponseTime();
-            turnaround += m.getAvgTurnaroundTime();
-            throughput += m.getThroughput();
-            cpu += m.getCpuUtilization();
-            memory += m.getMemoryUtilization();
-            bandwidth += m.getBwUtilization();
-            load += m.getLoadBalanceVariance();
-            fairness += m.getFairnessIndex();
-            overloaded += m.getServerOverloadCount();
-        }
-
-        int n = list.size();
-        return new AggregatedPerformanceMetrics(
-                algorithmName,
-                makespan / n,
-                waiting / n,
-                response / n,
-                turnaround / n,
-                throughput / n,
-                cpu / n,
-                memory / n,
-                bandwidth / n,
-                load / n,
-                fairness / n,
-                (int) Math.round((double) overloaded / n)
-        );
-    }
-
-    private PerformanceMetrics getBestMakespan(List<PerformanceMetrics> metrics) {
-        PerformanceMetrics best = metrics.get(0);
-        for (PerformanceMetrics metric : metrics) {
-            if (metric.getMakespan() < best.getMakespan()) {
-                best = metric;
-            }
-        }
-        return best;
-    }
-
-    private PerformanceMetrics getBestThroughput(List<PerformanceMetrics> metrics) {
-        PerformanceMetrics best = metrics.get(0);
-        for (PerformanceMetrics metric : metrics) {
-            if (metric.getThroughput() > best.getThroughput()) {
-                best = metric;
-            }
-        }
-        return best;
-    }
-
     private JFreeChart createComprehensiveChart(List<PerformanceMetrics> metricsList) {
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
 
-        PerformanceMetrics baseline = null;
-        for (PerformanceMetrics m : metricsList) {
-            if ("Traditional RR".equals(m.getAlgorithmName())) {
-                baseline = m;
-                break;
-            }
-        }
-
-        if (baseline == null && !metricsList.isEmpty()) {
-            baseline = metricsList.get(0);
-        }
-
-        if (baseline == null) {
+        if (metricsList == null || metricsList.isEmpty()) {
             return ChartFactory.createBarChart(
                     "Comprehensive Performance Comparison",
                     "Algorithm",
-                    "Performance Score (%)",
+                    "Raw Metric Value",
                     dataset
             );
         }
 
         for (PerformanceMetrics m : metricsList) {
-            double makespanScore = (baseline.getMakespan() / m.getMakespan()) * 100.0;
-            double throughputScore = (m.getThroughput() / baseline.getThroughput()) * 100.0;
-            double turnaroundScore = (baseline.getAvgTurnaroundTime() / m.getAvgTurnaroundTime()) * 100.0;
-
-            dataset.addValue(makespanScore, "Makespan Score", m.getAlgorithmName());
-            dataset.addValue(throughputScore, "Throughput Score", m.getAlgorithmName());
-            dataset.addValue(turnaroundScore, "Turnaround Score", m.getAlgorithmName());
+            dataset.addValue(m.getMakespan(), "Makespan", m.getAlgorithmName());
+            dataset.addValue(m.getThroughput(), "Throughput", m.getAlgorithmName());
+            dataset.addValue(m.getAvgTurnaroundTime(), "Avg Turnaround", m.getAlgorithmName());
         }
 
         JFreeChart chart = ChartFactory.createBarChart(
-                "Comprehensive Performance Comparison (Normalized to Traditional RR = 100%)",
+                "Comprehensive Performance Comparison",
                 "Algorithm",
-                "Performance Score (%)",
+                "Raw Metric Value",
                 dataset
         );
 
@@ -817,123 +718,44 @@ public class ResultsDashboard extends JFrame {
 
     private void exportCsv() {
         try {
-            collector.exportToCSV("results/data/ui_export_results.csv");
-            JOptionPane.showMessageDialog(this, "CSV exported successfully.");
+            ChartGenerator.exportDetailedCsv(
+                    collector.getMetricsList(),
+                    testCases,
+                    selectedAlgorithm,
+                    "results/data/ui_export_results.csv"
+            );
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "CSV exported with ALL test cases."
+            );
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "CSV export failed: " + e.getMessage());
+            JOptionPane.showMessageDialog(
+                    this,
+                    "CSV export failed: " + e.getMessage()
+            );
+            e.printStackTrace();
         }
     }
 
     private void exportGraphs() {
         try {
-            ChartGenerator.generateAllCharts(collector.getMetricsList());
-            JOptionPane.showMessageDialog(this, "Graphs exported to results/graphs/");
+            ChartGenerator.generatePerTestCaseCharts(
+                    collector.getMetricsList(),
+                    testCases,
+                    selectedAlgorithm
+            );
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Graphs exported with ALL test cases."
+            );
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Graph export failed: " + e.getMessage());
-        }
-    }
-
-    private static class AggregatedPerformanceMetrics extends PerformanceMetrics {
-        private final String algorithmName;
-        private final double makespan;
-        private final double avgWaitingTime;
-        private final double avgResponseTime;
-        private final double avgTurnaroundTime;
-        private final double throughput;
-        private final double cpuUtilization;
-        private final double memoryUtilization;
-        private final double bwUtilization;
-        private final double loadBalanceVariance;
-        private final double fairnessIndex;
-        private final int serverOverloadCount;
-
-        public AggregatedPerformanceMetrics(
-                String algorithmName,
-                double makespan,
-                double avgWaitingTime,
-                double avgResponseTime,
-                double avgTurnaroundTime,
-                double throughput,
-                double cpuUtilization,
-                double memoryUtilization,
-                double bwUtilization,
-                double loadBalanceVariance,
-                double fairnessIndex,
-                int serverOverloadCount
-        ) {
-            super(algorithmName, new ArrayList<>(), new ArrayList<>());
-            this.algorithmName = algorithmName;
-            this.makespan = makespan;
-            this.avgWaitingTime = avgWaitingTime;
-            this.avgResponseTime = avgResponseTime;
-            this.avgTurnaroundTime = avgTurnaroundTime;
-            this.throughput = throughput;
-            this.cpuUtilization = cpuUtilization;
-            this.memoryUtilization = memoryUtilization;
-            this.bwUtilization = bwUtilization;
-            this.loadBalanceVariance = loadBalanceVariance;
-            this.fairnessIndex = fairnessIndex;
-            this.serverOverloadCount = serverOverloadCount;
-        }
-
-        @Override
-        public String getAlgorithmName() {
-            return algorithmName;
-        }
-
-        @Override
-        public double getMakespan() {
-            return makespan;
-        }
-
-        @Override
-        public double getAvgWaitingTime() {
-            return avgWaitingTime;
-        }
-
-        @Override
-        public double getAvgResponseTime() {
-            return avgResponseTime;
-        }
-
-        @Override
-        public double getAvgTurnaroundTime() {
-            return avgTurnaroundTime;
-        }
-
-        @Override
-        public double getThroughput() {
-            return throughput;
-        }
-
-        @Override
-        public double getCpuUtilization() {
-            return cpuUtilization;
-        }
-
-        @Override
-        public double getMemoryUtilization() {
-            return memoryUtilization;
-        }
-
-        @Override
-        public double getBwUtilization() {
-            return bwUtilization;
-        }
-
-        @Override
-        public double getLoadBalanceVariance() {
-            return loadBalanceVariance;
-        }
-
-        @Override
-        public double getFairnessIndex() {
-            return fairnessIndex;
-        }
-
-        @Override
-        public int getServerOverloadCount() {
-            return serverOverloadCount;
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Graph export failed: " + e.getMessage()
+            );
+            e.printStackTrace();
         }
     }
 }

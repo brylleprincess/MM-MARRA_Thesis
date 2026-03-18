@@ -239,8 +239,15 @@ public class SimulatorDashboard extends JFrame {
                     ResultsDashboard resultsWindow = new ResultsDashboard(
                             collector,
                             generatedCases,
-                            selectedAlgorithm
+                            selectedAlgorithm,
+                            minHosts,
+                            maxHosts,
+                            minVms,
+                            maxVms,
+                            minCloudlets,
+                            maxCloudlets
                     );
+                    resultsWindow.setVisible(true);
                     resultsWindow.setVisible(true);
 
                 } catch (Exception ex) {
