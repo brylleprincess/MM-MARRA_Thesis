@@ -26,9 +26,9 @@ import java.util.List;
 
 public class Main {
 
-    private static final int NUMBER_OF_VMS = 15;
-    private static final int NUMBER_OF_HOSTS = 20;
-    private static final int NUMBER_OF_CLOUDLETS = 500;
+    private static final int NUMBER_OF_VMS = 0;
+    private static final int NUMBER_OF_HOSTS = 0;
+    private static final int NUMBER_OF_CLOUDLETS = 0;
 
     public static void main(String[] args) {
         /*
@@ -74,7 +74,7 @@ public class Main {
         // Run all algorithms
         System.out.println("STARTING COMPARATIVE SIMULATION...\n");
 
-        metricsCollector.addMetrics(runSimulation("Traditional RR"));
+        metricsCollector.addMetrics(runSimulation("Traditional RR", TraditionalRRBroker.DEFAULT_TIME_QUANTUM));
         metricsCollector.addMetrics(runSimulation("MARR"));
         metricsCollector.addMetrics(runSimulation("MMRR"));
         metricsCollector.addMetrics(runSimulation("MMARRA"));
@@ -95,13 +95,17 @@ public class Main {
      * Used by console mode
      */
     private static PerformanceMetrics runSimulation(String algorithmName) {
+        return runSimulation(algorithmName, TraditionalRRBroker.DEFAULT_TIME_QUANTUM);
+    }
+
+    private static PerformanceMetrics runSimulation(String algorithmName, double traditionalQuantum) {
         System.out.println("\n" + "-".repeat(80));
         System.out.println("Running: " + algorithmName);
         System.out.println("-".repeat(80));
 
         SimulationEnvironment env = new SimulationEnvironment();
         Datacenter dc = env.createDatacenter(NUMBER_OF_HOSTS);
-        DatacenterBroker broker = createBroker(env, algorithmName);
+        DatacenterBroker broker = createBroker(env, algorithmName, traditionalQuantum);
 
         List<Vm> vmList = VmCreator.createHeterogeneousVms(NUMBER_OF_VMS);
         List<Cloudlet> cloudletList = WorkloadGenerator.createDiverseWorkload(NUMBER_OF_CLOUDLETS);
@@ -121,6 +125,8 @@ public class Main {
             ((MMRR_Broker) broker).printStatistics();
         } else if (broker instanceof MARR_Broker) {
             ((MARR_Broker) broker).printStatistics();
+        } else if (broker instanceof TraditionalRRBroker) {
+            ((TraditionalRRBroker) broker).printStatistics();
         }
 
         return new PerformanceMetrics(algorithmName, finished, vmList);
@@ -130,9 +136,13 @@ public class Main {
      * Used by UI + console mode
      */
     public static PerformanceMetrics runSimulation(int numberOfHosts, int numberOfVms, int numberOfCloudlets, String algorithmName) {
+        return runSimulation(numberOfHosts, numberOfVms, numberOfCloudlets, algorithmName, TraditionalRRBroker.DEFAULT_TIME_QUANTUM);
+    }
+
+    public static PerformanceMetrics runSimulation(int numberOfHosts, int numberOfVms, int numberOfCloudlets, String algorithmName, double traditionalQuantum) {
         SimulationEnvironment env = new SimulationEnvironment();
         Datacenter dc = env.createDatacenter(numberOfHosts);
-        DatacenterBroker broker = createBroker(env, algorithmName);
+        DatacenterBroker broker = createBroker(env, algorithmName, traditionalQuantum);
 
         List<Vm> vmList = VmCreator.createHeterogeneousVms(numberOfVms);
         List<Cloudlet> cloudletList = WorkloadGenerator.createDiverseWorkload(numberOfCloudlets);
@@ -150,9 +160,13 @@ public class Main {
      * Used by UI when "Run All Algorithms" is selected
      */
     public static MetricsCollector runAllSimulations(int numberOfHosts, int numberOfVms, int numberOfCloudlets) {
+        return runAllSimulations(numberOfHosts, numberOfVms, numberOfCloudlets, TraditionalRRBroker.DEFAULT_TIME_QUANTUM);
+    }
+
+    public static MetricsCollector runAllSimulations(int numberOfHosts, int numberOfVms, int numberOfCloudlets, double traditionalQuantum) {
         MetricsCollector metricsCollector = new MetricsCollector();
 
-        metricsCollector.addMetrics(runSimulation(numberOfHosts, numberOfVms, numberOfCloudlets, "Traditional RR"));
+        metricsCollector.addMetrics(runSimulation(numberOfHosts, numberOfVms, numberOfCloudlets, "Traditional RR", traditionalQuantum));
         metricsCollector.addMetrics(runSimulation(numberOfHosts, numberOfVms, numberOfCloudlets, "MARR"));
         metricsCollector.addMetrics(runSimulation(numberOfHosts, numberOfVms, numberOfCloudlets, "MMRR"));
         metricsCollector.addMetrics(runSimulation(numberOfHosts, numberOfVms, numberOfCloudlets, "MMARRA"));
@@ -160,7 +174,7 @@ public class Main {
         return metricsCollector;
     }
 
-    private static DatacenterBroker createBroker(SimulationEnvironment env, String name) {
+    private static DatacenterBroker createBroker(SimulationEnvironment env, String name, double traditionalQuantum) {
         switch (name) {
             case "MMARRA":
                 return new MMARRA_Broker(env.getSimulation());
@@ -169,7 +183,7 @@ public class Main {
             case "MARR":
                 return new MARR_Broker(env.getSimulation());
             default:
-                return new TraditionalRRBroker(env.getSimulation());
+                return new TraditionalRRBroker(env.getSimulation(), traditionalQuantum);
         }
     }
 }

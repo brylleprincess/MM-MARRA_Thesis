@@ -22,6 +22,7 @@ public class SimulatorDashboard extends JFrame {
     private JTextField maxVmsField;
     private JTextField minCloudletsField;
     private JTextField maxCloudletsField;
+    private JTextField traditionalQuantumField;
 
     private JComboBox<String> algorithmCombo;
     private JButton startButton;
@@ -46,7 +47,7 @@ public class SimulatorDashboard extends JFrame {
         JLabel title = new JLabel("Simulation Settings");
         title.setFont(new Font("Segoe UI", Font.BOLD, 22));
 
-        JLabel subtitle = new JLabel("Enter number of test cases and ranges for Hosts, VMs, and Cloudlets");
+        JLabel subtitle = new JLabel("Enter number of test cases, ranges, and the Traditional RR time quantum");
         subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         subtitle.setForeground(Color.DARK_GRAY);
 
@@ -82,6 +83,7 @@ public class SimulatorDashboard extends JFrame {
 
         minCloudletsField = new JTextField("200", 10);
         maxCloudletsField = new JTextField("500", 10);
+        traditionalQuantumField = new JTextField("1000", 10);
 
         algorithmCombo = new JComboBox<>(new String[]{
                 "Traditional RR",
@@ -94,6 +96,8 @@ public class SimulatorDashboard extends JFrame {
         startButton = new JButton("Start Simulation");
         startButton.setPreferredSize(new Dimension(180, 38));
         startButton.addActionListener(e -> runSimulation());
+
+        algorithmCombo.addActionListener(e -> updateTraditionalQuantumState());
 
         int row = 0;
 
@@ -135,6 +139,15 @@ public class SimulatorDashboard extends JFrame {
         row++;
         gbc.gridx = 0;
         gbc.gridy = row;
+        form.add(new JLabel("Traditional RR Time Quantum:"), gbc);
+        gbc.gridx = 1;
+        gbc.gridwidth = 2;
+        form.add(traditionalQuantumField, gbc);
+
+        row++;
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        gbc.gridwidth = 1;
         form.add(new JLabel("Scheduling Algorithm:"), gbc);
         gbc.gridx = 1;
         gbc.gridwidth = 2;
@@ -148,6 +161,7 @@ public class SimulatorDashboard extends JFrame {
         form.add(startButton, gbc);
 
         outer.add(form, BorderLayout.CENTER);
+        updateTraditionalQuantumState();
         return outer;
     }
 
@@ -170,6 +184,7 @@ public class SimulatorDashboard extends JFrame {
         int maxVms;
         int minCloudlets;
         int maxCloudlets;
+        double traditionalQuantum;
 
         try {
             testCases = Integer.parseInt(testCasesField.getText().trim());
@@ -179,11 +194,13 @@ public class SimulatorDashboard extends JFrame {
             maxVms = Integer.parseInt(maxVmsField.getText().trim());
             minCloudlets = Integer.parseInt(minCloudletsField.getText().trim());
             maxCloudlets = Integer.parseInt(maxCloudletsField.getText().trim());
+            traditionalQuantum = Double.parseDouble(traditionalQuantumField.getText().trim());
 
             if (testCases <= 0) throw new IllegalArgumentException("Test cases must be greater than 0.");
             if (minHosts > maxHosts) throw new IllegalArgumentException("Hosts min must be <= max.");
             if (minVms > maxVms) throw new IllegalArgumentException("VMs min must be <= max.");
             if (minCloudlets > maxCloudlets) throw new IllegalArgumentException("Cloudlets min must be <= max.");
+            if (traditionalQuantum <= 0) throw new IllegalArgumentException("Traditional RR time quantum must be greater than 0.");
         } catch (Exception e) {
             JOptionPane.showMessageDialog(
                     this,
@@ -217,12 +234,12 @@ public class SimulatorDashboard extends JFrame {
                     int cloudlets = testCase[2];
 
                     if ("Run All Algorithms".equals(selectedAlgorithm)) {
-                        MetricsCollector oneRun = Main.runAllSimulations(hosts, vms, cloudlets);
+                        MetricsCollector oneRun = Main.runAllSimulations(hosts, vms, cloudlets, traditionalQuantum);
                         for (PerformanceMetrics m : oneRun.getMetricsList()) {
                             mergedCollector.addMetrics(m);
                         }
                     } else {
-                        PerformanceMetrics metrics = Main.runSimulation(hosts, vms, cloudlets, selectedAlgorithm);
+                        PerformanceMetrics metrics = Main.runSimulation(hosts, vms, cloudlets, selectedAlgorithm, traditionalQuantum);
                         mergedCollector.addMetrics(metrics);
                     }
                 }
@@ -245,9 +262,9 @@ public class SimulatorDashboard extends JFrame {
                             minVms,
                             maxVms,
                             minCloudlets,
-                            maxCloudlets
+                            maxCloudlets,
+                            traditionalQuantum
                     );
-                    resultsWindow.setVisible(true);
                     resultsWindow.setVisible(true);
 
                 } catch (Exception ex) {
@@ -267,30 +284,32 @@ public class SimulatorDashboard extends JFrame {
         worker.execute();
     }
 
-    private List<int[]> buildRandomTestCases(
-            int testCases,
-            int minHosts, int maxHosts,
-            int minVms, int maxVms,
-            int minCloudlets, int maxCloudlets
-    ) {
-        List<int[]> list = new ArrayList<>();
+    private void updateTraditionalQuantumState() {
+        String selected = (String) algorithmCombo.getSelectedItem();
+        boolean enabled = selected != null &&
+                ("Traditional RR".equals(selected) || "Run All Algorithms".equals(selected));
+        traditionalQuantumField.setEnabled(enabled);
+    }
+
+    private List<int[]> buildRandomTestCases(int totalCases,
+                                             int minHosts, int maxHosts,
+                                             int minVms, int maxVms,
+                                             int minCloudlets, int maxCloudlets) {
+        List<int[]> cases = new ArrayList<>();
         Random random = new Random();
 
-        for (int i = 0; i < testCases; i++) {
+        for (int i = 0; i < totalCases; i++) {
             int hosts = randomInRange(random, minHosts, maxHosts);
             int vms = randomInRange(random, minVms, maxVms);
             int cloudlets = randomInRange(random, minCloudlets, maxCloudlets);
-
-            list.add(new int[]{hosts, vms, cloudlets});
+            cases.add(new int[]{hosts, vms, cloudlets});
         }
 
-        return list;
+        return cases;
     }
 
     private int randomInRange(Random random, int min, int max) {
-        if (min == max) {
-            return min;
-        }
-        return random.nextInt(max - min + 1) + min;
+        if (min == max) return min;
+        return random.nextInt((max - min) + 1) + min;
     }
 }

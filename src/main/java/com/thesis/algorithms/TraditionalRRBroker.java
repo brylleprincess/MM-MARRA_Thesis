@@ -13,22 +13,29 @@ import java.util.Map;
  * Traditional Round Robin Broker - Baseline Algorithm
  * Assigns tasks to VMs in strict sequential order without considering
  * VM capacity, current load, or task characteristics.
+ *
+ * The time quantum is configurable from the UI so the baseline is no longer
+ * hard-coded to a single fixed value for every experiment.
  */
 public class TraditionalRRBroker extends DatacenterBrokerSimple {
 
-    private int currentIndex = 0; // Tracks current position in VM rotation
-    private final Map<Long, Integer> vmTaskCount = new HashMap<>(); // Records tasks assigned per VM
+    public static final double DEFAULT_TIME_QUANTUM = 1000.0;
+
+    private int currentIndex = 0;
+    private final Map<Long, Integer> vmTaskCount = new HashMap<>();
+    private final double timeQuantum;
 
     public TraditionalRRBroker(CloudSimPlus simulation) {
-        super(simulation);
+        this(simulation, DEFAULT_TIME_QUANTUM);
     }
 
-    /**
-     * Maps cloudlet to VM using simple round-robin rotation.
-     * Cycles through VMs sequentially: VM0 → VM1 → VM2 → ... → VM0
-     */
+    public TraditionalRRBroker(CloudSimPlus simulation, double timeQuantum) {
+        super(simulation);
+        this.timeQuantum = timeQuantum > 0 ? timeQuantum : DEFAULT_TIME_QUANTUM;
+    }
+
     @Override
-    protected Vm defaultVmMapper(Cloudlet cloudlet) {
+    public Vm defaultVmMapper(Cloudlet cloudlet) {
         List<Vm> vmList = getVmCreatedList();
         if (vmList.isEmpty()) return Vm.NULL;
 
@@ -41,5 +48,23 @@ public class TraditionalRRBroker extends DatacenterBrokerSimple {
 
     public Map<Long, Integer> getVmTaskCount() {
         return vmTaskCount;
+    }
+
+    public double getTimeQuantum() {
+        return timeQuantum;
+    }
+
+    public void printStatistics() {
+        System.out.println("\n" + "=".repeat(80));
+        System.out.println("TRADITIONAL RR STATISTICS");
+        System.out.println("=".repeat(80));
+        System.out.printf("Configured Time Quantum: %.2f MI%n", timeQuantum);
+
+        System.out.printf("%nVM Task Distribution:%n");
+        vmTaskCount.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(e -> System.out.printf("  VM %d: %d tasks%n", e.getKey(), e.getValue()));
+
+        System.out.println("=".repeat(80));
     }
 }
