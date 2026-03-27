@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -415,7 +416,7 @@ public class ResultsDashboard extends JFrame {
         graphPanel.add(overloadedPiePanel);
 
         centerPanel.add(graphPanel, BorderLayout.CENTER);
-        centerPanel.add(createWinnerPanel(perCaseMetrics), BorderLayout.EAST);
+        centerPanel.add(createSummaryInsightsPanel(perCaseMetrics), BorderLayout.EAST);
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 220)));
@@ -486,7 +487,7 @@ public class ResultsDashboard extends JFrame {
         graphPanel.add(overloadedLinePanel);
 
         centerPanel.add(graphPanel, BorderLayout.CENTER);
-        centerPanel.add(createWinnerPanel(perCaseMetrics), BorderLayout.EAST);
+        centerPanel.add(createSummaryInsightsPanel(perCaseMetrics), BorderLayout.EAST);
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 220)));
@@ -499,20 +500,20 @@ public class ResultsDashboard extends JFrame {
         return block;
     }
 
-    private JPanel createWinnerPanel(List<List<PerformanceMetrics>> perCaseMetrics) {
+    private JPanel createSummaryInsightsPanel(List<List<PerformanceMetrics>> perCaseMetrics) {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setPreferredSize(new Dimension(390, 760));
+        panel.setPreferredSize(new Dimension(430, 760));
         panel.setBackground(Color.WHITE);
         panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createTitledBorder("Winner Summary"),
+                BorderFactory.createTitledBorder("Summary Insights"),
                 BorderFactory.createEmptyBorder(12, 12, 12, 12)
         ));
 
         JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
         titlePanel.setBackground(Color.WHITE);
 
-        JLabel title = new JLabel("Overall Winners");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        JLabel title = new JLabel("Winners and Rankings");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 22));
         title.setHorizontalAlignment(SwingConstants.CENTER);
         titlePanel.add(title);
 
@@ -520,69 +521,21 @@ public class ResultsDashboard extends JFrame {
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         content.setBackground(Color.WHITE);
 
-        String bestOverviewPerformance = findBestAverageAlgorithm(perCaseMetrics, "overview_performance", false);
-        String bestOverviewUtilization = findBestAverageAlgorithm(perCaseMetrics, "overview_utilization", false);
-        String bestMakespan = findBestAverageAlgorithm(perCaseMetrics, "makespan", true);
-        String bestThroughput = findBestAverageAlgorithm(perCaseMetrics, "throughput", false);
-        String bestTurnaround = findBestAverageAlgorithm(perCaseMetrics, "turnaround", true);
-        String bestLoad = findBestAverageAlgorithm(perCaseMetrics, "load", true);
-        String bestFairness = findBestAverageAlgorithm(perCaseMetrics, "fairness", false);
-        String bestOverloaded = findBestAverageAlgorithm(perCaseMetrics, "overloaded", true);
-
-        content.add(createWinnerDescriptionLabel(
-                "Overview Performance",
-                bestOverviewPerformance,
-                bestOverviewPerformance + " has shown the strongest overall combined performance across the test runs."
-        ));
-        content.add(Box.createVerticalStrut(14));
-
-        content.add(createWinnerDescriptionLabel(
-                "Resource Utilization",
-                bestOverviewUtilization,
-                bestOverviewUtilization + " has shown the strongest average resource utilization across the test runs."
-        ));
-        content.add(Box.createVerticalStrut(14));
-
-        content.add(createWinnerDescriptionLabel(
-                "Makespan",
-                bestMakespan,
-                bestMakespan + " has shown the fastest makespan across the test runs."
-        ));
-        content.add(Box.createVerticalStrut(14));
-
-        content.add(createWinnerDescriptionLabel(
-                "Throughput",
-                bestThroughput,
-                bestThroughput + " has processed the highest throughput across the test runs."
-        ));
-        content.add(Box.createVerticalStrut(14));
-
-        content.add(createWinnerDescriptionLabel(
-                "Turnaround Time",
-                bestTurnaround,
-                bestTurnaround + " has shown the shortest turnaround time across the test runs."
-        ));
-        content.add(Box.createVerticalStrut(14));
-
-        content.add(createWinnerDescriptionLabel(
-                "Load Balance",
-                bestLoad,
-                bestLoad + " has shown the best load balancing performance across the test runs."
-        ));
-        content.add(Box.createVerticalStrut(14));
-
-        content.add(createWinnerDescriptionLabel(
-                "Fairness",
-                bestFairness,
-                bestFairness + " has shown the strongest fairness index across the test runs."
-        ));
-        content.add(Box.createVerticalStrut(14));
-
-        content.add(createWinnerDescriptionLabel(
-                "Overloaded VM",
-                bestOverloaded,
-                bestOverloaded + " has shown the fewest overloaded VMs across the test runs."
-        ));
+        content.add(createMetricSummaryCard(perCaseMetrics, "Overview Performance", "overview_performance", false));
+        content.add(Box.createVerticalStrut(12));
+        content.add(createMetricSummaryCard(perCaseMetrics, "Resource Utilization", "overview_utilization", false));
+        content.add(Box.createVerticalStrut(12));
+        content.add(createMetricSummaryCard(perCaseMetrics, "Makespan", "makespan", true));
+        content.add(Box.createVerticalStrut(12));
+        content.add(createMetricSummaryCard(perCaseMetrics, "Throughput", "throughput", false));
+        content.add(Box.createVerticalStrut(12));
+        content.add(createMetricSummaryCard(perCaseMetrics, "Turnaround Time", "turnaround", true));
+        content.add(Box.createVerticalStrut(12));
+        content.add(createMetricSummaryCard(perCaseMetrics, "Load Balance", "load", true));
+        content.add(Box.createVerticalStrut(12));
+        content.add(createMetricSummaryCard(perCaseMetrics, "Fairness", "fairness", false));
+        content.add(Box.createVerticalStrut(12));
+        content.add(createMetricSummaryCard(perCaseMetrics, "Overloaded VM", "overloaded", true));
 
         JScrollPane scrollPane = new JScrollPane(content);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
@@ -595,32 +548,233 @@ public class ResultsDashboard extends JFrame {
         return panel;
     }
 
-    private JPanel createWinnerDescriptionLabel(String metricTitle, String winner, String description) {
-        JPanel wrapper = new JPanel();
-        wrapper.setLayout(new BoxLayout(wrapper, BoxLayout.Y_AXIS));
-        wrapper.setBackground(Color.WHITE);
-        wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
-        wrapper.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
+    private JPanel createMetricSummaryCard(List<List<PerformanceMetrics>> perCaseMetrics,
+                                           String metricTitle,
+                                           String metricType,
+                                           boolean lowerIsBetter) {
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(220, 220, 220)),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
 
-        JLabel metricLabel = new JLabel(metricTitle + ": " + winner);
-        metricLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        metricLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        String winner = findBestAverageAlgorithm(perCaseMetrics, metricType, lowerIsBetter);
+        int wins = countMetricWins(perCaseMetrics, metricType, lowerIsBetter, winner);
+        int totalCases = perCaseMetrics.size();
 
-        JTextArea descArea = new JTextArea(description);
-        descArea.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        JLabel titleLabel = new JLabel(metricTitle + ": " + winner);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JTextArea descArea = new JTextArea(buildMetricDescription(metricTitle, winner, wins, totalCases));
+        descArea.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         descArea.setLineWrap(true);
         descArea.setWrapStyleWord(true);
         descArea.setEditable(false);
         descArea.setFocusable(false);
         descArea.setOpaque(false);
         descArea.setAlignmentX(Component.LEFT_ALIGNMENT);
-        descArea.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
-        descArea.setMaximumSize(new Dimension(340, Integer.MAX_VALUE));
+        descArea.setBorder(BorderFactory.createEmptyBorder(6, 0, 8, 0));
 
-        wrapper.add(metricLabel);
-        wrapper.add(descArea);
+        JTextArea rankingArea = new JTextArea(buildRankingText(perCaseMetrics, metricType, lowerIsBetter));
+        rankingArea.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        rankingArea.setLineWrap(true);
+        rankingArea.setWrapStyleWord(true);
+        rankingArea.setEditable(false);
+        rankingArea.setFocusable(false);
+        rankingArea.setOpaque(false);
+        rankingArea.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        return wrapper;
+        card.add(titleLabel);
+        card.add(descArea);
+        card.add(rankingArea);
+
+        return card;
+    }
+
+    private String buildMetricDescription(String metricTitle, String winner, int wins, int totalCases) {
+        switch (metricTitle) {
+            case "Overview Performance":
+                return winner + " achieved the strongest overall combined performance and won "
+                        + wins + "/" + totalCases + " test cases.";
+            case "Resource Utilization":
+                return winner + " achieved the strongest resource utilization and won "
+                        + wins + "/" + totalCases + " test cases.";
+            case "Makespan":
+                return winner + " achieved the fastest makespan and won "
+                        + wins + "/" + totalCases + " test cases.";
+            case "Throughput":
+                return winner + " achieved the highest throughput and won "
+                        + wins + "/" + totalCases + " test cases.";
+            case "Turnaround Time":
+                return winner + " achieved the shortest turnaround time and won "
+                        + wins + "/" + totalCases + " test cases.";
+            case "Load Balance":
+                return winner + " achieved the best load balancing result and won "
+                        + wins + "/" + totalCases + " test cases.";
+            case "Fairness":
+                return winner + " achieved the strongest fairness score and won "
+                        + wins + "/" + totalCases + " test cases.";
+            case "Overloaded VM":
+                return winner + " achieved the fewest overloaded VMs and won "
+                        + wins + "/" + totalCases + " test cases.";
+            default:
+                return winner + " won " + wins + "/" + totalCases + " test cases.";
+        }
+    }
+
+    private String buildRankingText(List<List<PerformanceMetrics>> perCaseMetrics,
+                                    String metricType,
+                                    boolean lowerIsBetter) {
+        List<String> ranking = rankAlgorithmsByAverage(perCaseMetrics, metricType, lowerIsBetter);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Ranking:\n");
+
+        for (int i = 0; i < ranking.size(); i++) {
+            String algorithm = ranking.get(i);
+            int wins = countMetricWins(perCaseMetrics, metricType, lowerIsBetter, algorithm);
+            sb.append(i + 1)
+                    .append(". ")
+                    .append(algorithm)
+                    .append(" (")
+                    .append(wins)
+                    .append("/")
+                    .append(perCaseMetrics.size())
+                    .append(" wins)");
+
+            if (i < ranking.size() - 1) {
+                sb.append("\n");
+            }
+        }
+
+        return sb.toString();
+    }
+
+    private List<String> rankAlgorithmsByAverage(List<List<PerformanceMetrics>> perCaseMetrics,
+                                                 String metricType,
+                                                 boolean lowerIsBetter) {
+        String[] algorithms = {"Traditional RR", "MARR", "MMRR", "MMARRA"};
+        List<String> ranking = new ArrayList<>();
+
+        for (String algorithm : algorithms) {
+            ranking.add(algorithm);
+        }
+
+        ranking.sort((a, b) -> {
+            double valueA = averageMetricForAlgorithm(perCaseMetrics, metricType, a);
+            double valueB = averageMetricForAlgorithm(perCaseMetrics, metricType, b);
+
+            if ("overview_performance".equals(metricType)) {
+                return Double.compare(valueB, valueA);
+            }
+
+            return lowerIsBetter
+                    ? Double.compare(valueA, valueB)
+                    : Double.compare(valueB, valueA);
+        });
+
+        return ranking;
+    }
+
+    private double averageMetricForAlgorithm(List<List<PerformanceMetrics>> perCaseMetrics,
+                                             String metricType,
+                                             String algorithmName) {
+        if ("overview_performance".equals(metricType)) {
+            return averageOverviewPerformanceScore(perCaseMetrics, algorithmName);
+        }
+
+        double total = 0.0;
+        int count = 0;
+
+        for (List<PerformanceMetrics> caseMetrics : perCaseMetrics) {
+            for (PerformanceMetrics metric : sortMetrics(caseMetrics)) {
+                if (algorithmName.equals(metric.getAlgorithmName())) {
+                    total += metricValue(metric, metricType);
+                    count++;
+                    break;
+                }
+            }
+        }
+
+        if (count == 0) {
+            return 0.0;
+        }
+
+        return total / count;
+    }
+
+    private int countMetricWins(List<List<PerformanceMetrics>> perCaseMetrics,
+                                String metricType,
+                                boolean lowerIsBetter,
+                                String algorithmName) {
+        int wins = 0;
+
+        for (List<PerformanceMetrics> caseMetrics : perCaseMetrics) {
+            String winner = findCaseWinner(caseMetrics, metricType, lowerIsBetter);
+            if (algorithmName.equals(winner)) {
+                wins++;
+            }
+        }
+
+        return wins;
+    }
+
+    private String findCaseWinner(List<PerformanceMetrics> caseMetrics,
+                                  String metricType,
+                                  boolean lowerIsBetter) {
+        List<PerformanceMetrics> ordered = sortMetrics(caseMetrics);
+
+        String bestAlgorithm = "N/A";
+        double bestValue = lowerIsBetter ? Double.MAX_VALUE : -Double.MAX_VALUE;
+
+        if ("overview_performance".equals(metricType)) {
+            double minMakespan = Double.MAX_VALUE;
+            double maxThroughput = -Double.MAX_VALUE;
+            double minTurnaround = Double.MAX_VALUE;
+
+            for (PerformanceMetrics metric : ordered) {
+                minMakespan = Math.min(minMakespan, metric.getMakespan());
+                maxThroughput = Math.max(maxThroughput, metric.getThroughput());
+                minTurnaround = Math.min(minTurnaround, metric.getAvgTurnaroundTime());
+            }
+
+            double bestScore = -Double.MAX_VALUE;
+
+            for (PerformanceMetrics metric : ordered) {
+                double makespanScore = safeRatio(minMakespan, metric.getMakespan());
+                double throughputScore = safeRatio(metric.getThroughput(), maxThroughput);
+                double turnaroundScore = safeRatio(minTurnaround, metric.getAvgTurnaroundTime());
+                double overviewScore = (makespanScore + throughputScore + turnaroundScore) / 3.0;
+
+                if (overviewScore > bestScore) {
+                    bestScore = overviewScore;
+                    bestAlgorithm = metric.getAlgorithmName();
+                }
+            }
+
+            return bestAlgorithm;
+        }
+
+        for (PerformanceMetrics metric : ordered) {
+            double value = metricValue(metric, metricType);
+
+            if (lowerIsBetter) {
+                if (value < bestValue) {
+                    bestValue = value;
+                    bestAlgorithm = metric.getAlgorithmName();
+                }
+            } else {
+                if (value > bestValue) {
+                    bestValue = value;
+                    bestAlgorithm = metric.getAlgorithmName();
+                }
+            }
+        }
+
+        return bestAlgorithm;
     }
 
     private JPanel createCaseGraphBlock(int caseNumber, int[] testCase, List<PerformanceMetrics> caseMetrics) {
@@ -1287,7 +1441,6 @@ public class ResultsDashboard extends JFrame {
         plot.setOutlinePaint(new Color(220, 220, 220));
         plot.setCircular(true);
         plot.setInteriorGap(0.04);
-
         plot.setSimpleLabels(true);
         plot.setLabelFont(new Font("Segoe UI", Font.BOLD, 11));
         plot.setLabelGenerator(new StandardPieSectionLabelGenerator("{0}: {2}"));
@@ -1345,37 +1498,24 @@ public class ResultsDashboard extends JFrame {
 
             savePieChart(dir, "pie_summary_overview_performance.png",
                     createAverageMetricPieChart("Overview: Comprehensive Performance Comparison", "overview_performance", perCaseMetrics));
-
             savePieChart(dir, "pie_summary_overview_utilization.png",
                     createAverageMetricPieChart("Overview: Resource Utilization Comparison", "overview_utilization", perCaseMetrics));
-
             savePieChart(dir, "pie_summary_makespan.png",
                     createAverageMetricPieChart("Average Makespan Share Across Test Runs", "makespan", perCaseMetrics));
-
             savePieChart(dir, "pie_summary_throughput.png",
                     createAverageMetricPieChart("Average Throughput Share Across Test Runs", "throughput", perCaseMetrics));
-
             savePieChart(dir, "pie_summary_turnaround.png",
                     createAverageMetricPieChart("Average Turnaround Share Across Test Runs", "turnaround", perCaseMetrics));
-
             savePieChart(dir, "pie_summary_load_balance.png",
                     createAverageMetricPieChart("Average Load Balance Share Across Test Runs", "load", perCaseMetrics));
-
             savePieChart(dir, "pie_summary_fairness.png",
                     createAverageMetricPieChart("Average Fairness Share Across Test Runs", "fairness", perCaseMetrics));
-
             savePieChart(dir, "pie_summary_overloaded_vm.png",
                     createAverageMetricPieChart("Average Overloaded VM Share Across Test Runs", "overloaded", perCaseMetrics));
 
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Complete pie summary charts exported to results/charts/"
-            );
+            JOptionPane.showMessageDialog(this, "Complete pie summary charts exported to results/charts/");
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Pie chart export failed: " + e.getMessage()
-            );
+            JOptionPane.showMessageDialog(this, "Pie chart export failed: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -1391,56 +1531,33 @@ public class ResultsDashboard extends JFrame {
 
             saveLineChart(dir, "line_summary_overview_performance.png",
                     createSummaryLineChart("Overview: Comprehensive Performance Comparison", "overview_performance", perCaseMetrics, "Normalized Performance Score"));
-
             saveLineChart(dir, "line_summary_overview_utilization.png",
                     createSummaryLineChart("Overview: Resource Utilization Comparison", "overview_utilization", perCaseMetrics, "Average Utilization (%)"));
-
             saveLineChart(dir, "line_summary_makespan.png",
                     createSummaryLineChart("Makespan Across Test Runs", "makespan", perCaseMetrics, "Makespan"));
-
             saveLineChart(dir, "line_summary_throughput.png",
                     createSummaryLineChart("Throughput Across Test Runs", "throughput", perCaseMetrics, "Throughput"));
-
             saveLineChart(dir, "line_summary_turnaround.png",
                     createSummaryLineChart("Turnaround Across Test Runs", "turnaround", perCaseMetrics, "Turnaround"));
-
             saveLineChart(dir, "line_summary_load_balance.png",
                     createSummaryLineChart("Load Balance Across Test Runs", "load", perCaseMetrics, "Load Balance"));
-
             saveLineChart(dir, "line_summary_fairness.png",
                     createSummaryLineChart("Fairness Across Test Runs", "fairness", perCaseMetrics, "Fairness"));
-
             saveLineChart(dir, "line_summary_overloaded_vm.png",
                     createSummaryLineChart("Overloaded VM Across Test Runs", "overloaded", perCaseMetrics, "Overloaded VM Count"));
 
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Complete line summary charts exported to results/charts/"
-            );
+            JOptionPane.showMessageDialog(this, "Complete line summary charts exported to results/charts/");
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Line chart export failed: " + e.getMessage()
-            );
+            JOptionPane.showMessageDialog(this, "Line chart export failed: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     private void savePieChart(File dir, String fileName, JFreeChart chart) throws IOException {
-        ChartUtils.saveChartAsPNG(
-                new File(dir, fileName),
-                chart,
-                900,
-                600
-        );
+        ChartUtils.saveChartAsPNG(new File(dir, fileName), chart, 900, 600);
     }
 
     private void saveLineChart(File dir, String fileName, JFreeChart chart) throws IOException {
-        ChartUtils.saveChartAsPNG(
-                new File(dir, fileName),
-                chart,
-                1000,
-                600
-        );
+        ChartUtils.saveChartAsPNG(new File(dir, fileName), chart, 1000, 600);
     }
 }
