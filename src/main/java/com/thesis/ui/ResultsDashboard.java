@@ -8,6 +8,7 @@ import org.jfree.chart.ChartPanel;
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.CategoryLabelPositions;
+import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.labels.ItemLabelAnchor;
 import org.jfree.chart.labels.ItemLabelPosition;
 import org.jfree.chart.labels.StandardCategoryItemLabelGenerator;
@@ -28,7 +29,6 @@ import java.io.File;
 import java.io.IOException;
 import java.text.NumberFormat;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -363,7 +363,7 @@ public class ResultsDashboard extends JFrame {
         block.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         block.setBackground(Color.WHITE);
 
-        JLabel header = new JLabel("Pie Summary of Average Performance Across Test Runs");
+        JLabel header = new JLabel("Pie Summary of Win Percentage Across Test Runs");
         header.setFont(new Font("Segoe UI", Font.BOLD, 18));
 
         JPanel centerPanel = new JPanel(new BorderLayout(12, 12));
@@ -373,28 +373,28 @@ public class ResultsDashboard extends JFrame {
         graphPanel.setBackground(Color.WHITE);
 
         ChartPanel overviewPerformancePiePanel = new ChartPanel(
-                createAverageMetricPieChart("Overview: Comprehensive Performance Comparison", "overview_performance", perCaseMetrics)
+                createWinPercentagePieChart("Overview: Comprehensive Performance Comparison", "overview_performance", perCaseMetrics, false)
         );
         ChartPanel overviewUtilizationPiePanel = new ChartPanel(
-                createAverageMetricPieChart("Overview: Resource Utilization Comparison", "overview_utilization", perCaseMetrics)
+                createWinPercentagePieChart("Overview: Resource Utilization Comparison", "overview_utilization", perCaseMetrics, false)
         );
         ChartPanel makespanPiePanel = new ChartPanel(
-                createAverageMetricPieChart("Average Makespan Share Across Test Runs", "makespan", perCaseMetrics)
+                createWinPercentagePieChart("Makespan Win Percentage Across Test Runs", "makespan", perCaseMetrics, true)
         );
         ChartPanel throughputPiePanel = new ChartPanel(
-                createAverageMetricPieChart("Average Throughput Share Across Test Runs", "throughput", perCaseMetrics)
+                createWinPercentagePieChart("Throughput Win Percentage Across Test Runs", "throughput", perCaseMetrics, false)
         );
         ChartPanel turnaroundPiePanel = new ChartPanel(
-                createAverageMetricPieChart("Average Turnaround Share Across Test Runs", "turnaround", perCaseMetrics)
+                createWinPercentagePieChart("Turnaround Win Percentage Across Test Runs", "turnaround", perCaseMetrics, true)
         );
         ChartPanel loadPiePanel = new ChartPanel(
-                createAverageMetricPieChart("Average Load Balance Share Across Test Runs", "load", perCaseMetrics)
+                createWinPercentagePieChart("Load Balance Win Percentage Across Test Runs", "load", perCaseMetrics, true)
         );
         ChartPanel fairnessPiePanel = new ChartPanel(
-                createAverageMetricPieChart("Average Fairness Share Across Test Runs", "fairness", perCaseMetrics)
+                createWinPercentagePieChart("Fairness Win Percentage Across Test Runs", "fairness", perCaseMetrics, false)
         );
         ChartPanel overloadedPiePanel = new ChartPanel(
-                createAverageMetricPieChart("Average Overloaded VM Share Across Test Runs", "overloaded", perCaseMetrics)
+                createWinPercentagePieChart("Overloaded VM Win Percentage Across Test Runs", "overloaded", perCaseMetrics, true)
         );
 
         configureSummaryChartPanel(overviewPerformancePiePanel, 480, 280);
@@ -434,7 +434,7 @@ public class ResultsDashboard extends JFrame {
         block.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         block.setBackground(Color.WHITE);
 
-        JLabel header = new JLabel("Line Graph Summary of Performance Across Test Runs");
+        JLabel header = new JLabel("Line Graph Summary of Rankings Per Test Run");
         header.setFont(new Font("Segoe UI", Font.BOLD, 18));
 
         JPanel centerPanel = new JPanel(new BorderLayout(12, 12));
@@ -444,28 +444,28 @@ public class ResultsDashboard extends JFrame {
         graphPanel.setBackground(Color.WHITE);
 
         ChartPanel overviewPerformanceLinePanel = new ChartPanel(
-                createSummaryLineChart("Overview: Comprehensive Performance Comparison", "overview_performance", perCaseMetrics, "Normalized Performance Score")
+                createRankingLineChart("Overview: Comprehensive Performance Comparison", "overview_performance", perCaseMetrics, false)
         );
         ChartPanel overviewUtilizationLinePanel = new ChartPanel(
-                createSummaryLineChart("Overview: Resource Utilization Comparison", "overview_utilization", perCaseMetrics, "Average Utilization (%)")
+                createRankingLineChart("Overview: Resource Utilization Comparison", "overview_utilization", perCaseMetrics, false)
         );
         ChartPanel makespanLinePanel = new ChartPanel(
-                createSummaryLineChart("Makespan Across Test Runs", "makespan", perCaseMetrics, "Makespan")
+                createRankingLineChart("Makespan Rankings Across Test Runs", "makespan", perCaseMetrics, true)
         );
         ChartPanel throughputLinePanel = new ChartPanel(
-                createSummaryLineChart("Throughput Across Test Runs", "throughput", perCaseMetrics, "Throughput")
+                createRankingLineChart("Throughput Rankings Across Test Runs", "throughput", perCaseMetrics, false)
         );
         ChartPanel turnaroundLinePanel = new ChartPanel(
-                createSummaryLineChart("Turnaround Across Test Runs", "turnaround", perCaseMetrics, "Turnaround")
+                createRankingLineChart("Turnaround Rankings Across Test Runs", "turnaround", perCaseMetrics, true)
         );
         ChartPanel loadLinePanel = new ChartPanel(
-                createSummaryLineChart("Load Balance Across Test Runs", "load", perCaseMetrics, "Load Balance")
+                createRankingLineChart("Load Balance Rankings Across Test Runs", "load", perCaseMetrics, true)
         );
         ChartPanel fairnessLinePanel = new ChartPanel(
-                createSummaryLineChart("Fairness Across Test Runs", "fairness", perCaseMetrics, "Fairness")
+                createRankingLineChart("Fairness Rankings Across Test Runs", "fairness", perCaseMetrics, false)
         );
         ChartPanel overloadedLinePanel = new ChartPanel(
-                createSummaryLineChart("Overloaded VM Across Test Runs", "overloaded", perCaseMetrics, "Overloaded VM Count")
+                createRankingLineChart("Overloaded VM Rankings Across Test Runs", "overloaded", perCaseMetrics, true)
         );
 
         configureSummaryChartPanel(overviewPerformanceLinePanel, 480, 280);
@@ -1116,32 +1116,17 @@ public class ResultsDashboard extends JFrame {
         return chart;
     }
 
-    private JFreeChart createAverageMetricPieChart(String title, String metricType, List<List<PerformanceMetrics>> perCaseMetrics) {
+    private JFreeChart createWinPercentagePieChart(String title,
+                                                   String metricType,
+                                                   List<List<PerformanceMetrics>> perCaseMetrics,
+                                                   boolean lowerIsBetter) {
         DefaultPieDataset<String> dataset = new DefaultPieDataset<>();
         String[] orderedAlgorithms = {"Traditional RR", "MARR", "MMRR", "MMARRA"};
 
-        if ("overview_performance".equals(metricType)) {
-            for (String algorithm : orderedAlgorithms) {
-                dataset.setValue(algorithm, averageOverviewPerformanceScore(perCaseMetrics, algorithm));
-            }
-        } else {
-            double[] totals = new double[4];
-            int[] counts = new int[4];
-
-            for (List<PerformanceMetrics> caseMetrics : perCaseMetrics) {
-                for (PerformanceMetrics metric : sortMetrics(caseMetrics)) {
-                    int index = algorithmIndex(metric.getAlgorithmName());
-                    if (index >= 0) {
-                        totals[index] += metricValue(metric, metricType);
-                        counts[index]++;
-                    }
-                }
-            }
-
-            for (int i = 0; i < orderedAlgorithms.length; i++) {
-                if (counts[i] > 0) {
-                    dataset.setValue(orderedAlgorithms[i], totals[i] / counts[i]);
-                }
+        for (String algorithm : orderedAlgorithms) {
+            int wins = countMetricWins(perCaseMetrics, metricType, lowerIsBetter, algorithm);
+            if (wins > 0) {
+                dataset.setValue(algorithm, wins);
             }
         }
 
@@ -1150,38 +1135,21 @@ public class ResultsDashboard extends JFrame {
         return chart;
     }
 
-    private JFreeChart createSummaryLineChart(String title,
+    private JFreeChart createRankingLineChart(String title,
                                               String metricType,
                                               List<List<PerformanceMetrics>> perCaseMetrics,
-                                              String yLabel) {
+                                              boolean lowerIsBetter) {
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        String[] orderedAlgorithms = {"Traditional RR", "MARR", "MMRR", "MMARRA"};
 
         for (int caseIndex = 0; caseIndex < perCaseMetrics.size(); caseIndex++) {
             List<PerformanceMetrics> caseMetrics = sortMetrics(perCaseMetrics.get(caseIndex));
+            List<String> ranking = rankAlgorithmsForCase(caseMetrics, metricType, lowerIsBetter);
 
-            if ("overview_performance".equals(metricType)) {
-                double minMakespan = Double.MAX_VALUE;
-                double maxThroughput = -Double.MAX_VALUE;
-                double minTurnaround = Double.MAX_VALUE;
-
-                for (PerformanceMetrics metric : caseMetrics) {
-                    minMakespan = Math.min(minMakespan, metric.getMakespan());
-                    maxThroughput = Math.max(maxThroughput, metric.getThroughput());
-                    minTurnaround = Math.min(minTurnaround, metric.getAvgTurnaroundTime());
-                }
-
-                for (PerformanceMetrics metric : caseMetrics) {
-                    double makespanScore = safeRatio(minMakespan, metric.getMakespan());
-                    double throughputScore = safeRatio(metric.getThroughput(), maxThroughput);
-                    double turnaroundScore = safeRatio(minTurnaround, metric.getAvgTurnaroundTime());
-                    double overviewScore = (makespanScore + throughputScore + turnaroundScore) / 3.0;
-
-                    dataset.addValue(overviewScore, metric.getAlgorithmName(), "Run " + (caseIndex + 1));
-                }
-            } else {
-                for (PerformanceMetrics metric : caseMetrics) {
-                    double value = metricValue(metric, metricType);
-                    dataset.addValue(value, metric.getAlgorithmName(), "Run " + (caseIndex + 1));
+            for (String algorithm : orderedAlgorithms) {
+                int rankValue = ranking.indexOf(algorithm) + 1;
+                if (rankValue > 0) {
+                    dataset.addValue(rankValue, algorithm, "Run " + (caseIndex + 1));
                 }
             }
         }
@@ -1189,7 +1157,7 @@ public class ResultsDashboard extends JFrame {
         JFreeChart chart = ChartFactory.createLineChart(
                 title,
                 "Test Run",
-                yLabel,
+                "RANKING",
                 dataset,
                 PlotOrientation.VERTICAL,
                 true,
@@ -1199,6 +1167,55 @@ public class ResultsDashboard extends JFrame {
 
         styleLineChart(chart);
         return chart;
+    }
+
+    private List<String> rankAlgorithmsForCase(List<PerformanceMetrics> caseMetrics,
+                                               String metricType,
+                                               boolean lowerIsBetter) {
+        List<PerformanceMetrics> ordered = new ArrayList<>(sortMetrics(caseMetrics));
+
+        if ("overview_performance".equals(metricType)) {
+            double minMakespan = Double.MAX_VALUE;
+            double maxThroughput = -Double.MAX_VALUE;
+            double minTurnaround = Double.MAX_VALUE;
+
+            for (PerformanceMetrics metric : ordered) {
+                minMakespan = Math.min(minMakespan, metric.getMakespan());
+                maxThroughput = Math.max(maxThroughput, metric.getThroughput());
+                minTurnaround = Math.min(minTurnaround, metric.getAvgTurnaroundTime());
+            }
+
+            final double finalMinMakespan = minMakespan;
+            final double finalMaxThroughput = maxThroughput;
+            final double finalMinTurnaround = minTurnaround;
+
+            ordered.sort((a, b) -> {
+                double scoreA = (safeRatio(finalMinMakespan, a.getMakespan())
+                        + safeRatio(a.getThroughput(), finalMaxThroughput)
+                        + safeRatio(finalMinTurnaround, a.getAvgTurnaroundTime())) / 3.0;
+
+                double scoreB = (safeRatio(finalMinMakespan, b.getMakespan())
+                        + safeRatio(b.getThroughput(), finalMaxThroughput)
+                        + safeRatio(finalMinTurnaround, b.getAvgTurnaroundTime())) / 3.0;
+
+                return Double.compare(scoreB, scoreA);
+            });
+        } else {
+            ordered.sort((a, b) -> {
+                double valueA = metricValue(a, metricType);
+                double valueB = metricValue(b, metricType);
+                return lowerIsBetter
+                        ? Double.compare(valueA, valueB)
+                        : Double.compare(valueB, valueA);
+            });
+        }
+
+        List<String> ranking = new ArrayList<>();
+        for (PerformanceMetrics metric : ordered) {
+            ranking.add(metric.getAlgorithmName());
+        }
+
+        return ranking;
     }
 
     private int algorithmIndex(String algorithmName) {
@@ -1413,18 +1430,23 @@ public class ResultsDashboard extends JFrame {
         plot.setRangeGridlinePaint(new Color(230, 230, 230));
         plot.setDomainGridlinesVisible(false);
 
-        plot.getDomainAxis().setLabelFont(new Font("Segoe UI", Font.BOLD, 13));
+        plot.getDomainAxis().setLabelFont(new Font("Segoe UI", Font.BOLD, 15));
         plot.getDomainAxis().setTickLabelFont(new Font("Segoe UI", Font.PLAIN, 11));
         plot.getDomainAxis().setCategoryLabelPositions(CategoryLabelPositions.UP_45);
 
-        plot.getRangeAxis().setLabelFont(new Font("Segoe UI", Font.BOLD, 13));
-        plot.getRangeAxis().setTickLabelFont(new Font("Segoe UI", Font.PLAIN, 11));
+        NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
+        rangeAxis.setLabelFont(new Font("Segoe UI", Font.BOLD, 15));
+        rangeAxis.setTickLabelFont(new Font("Segoe UI", Font.BOLD, 11));
+        rangeAxis.setRange(0.0, 4.1);
+        rangeAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+        rangeAxis.setInverted(true);
 
         LineAndShapeRenderer renderer = (LineAndShapeRenderer) plot.getRenderer();
         renderer.setDefaultShapesVisible(true);
-        renderer.setDefaultShapesFilled(true);
+        renderer.setDefaultShapesFilled(false);
         renderer.setDrawOutlines(true);
-        renderer.setUseFillPaint(true);
+        renderer.setUseFillPaint(false);
+        renderer.setDefaultStroke(new BasicStroke(2.0f));
 
         if (chart.getLegend() != null) {
             chart.getLegend().setItemFont(new Font("Segoe UI", Font.PLAIN, 10));
@@ -1497,21 +1519,21 @@ public class ResultsDashboard extends JFrame {
             List<List<PerformanceMetrics>> perCaseMetrics = splitMetricsByCase(collector.getMetricsList());
 
             savePieChart(dir, "pie_summary_overview_performance.png",
-                    createAverageMetricPieChart("Overview: Comprehensive Performance Comparison", "overview_performance", perCaseMetrics));
+                    createWinPercentagePieChart("Overview: Comprehensive Performance Comparison", "overview_performance", perCaseMetrics, false));
             savePieChart(dir, "pie_summary_overview_utilization.png",
-                    createAverageMetricPieChart("Overview: Resource Utilization Comparison", "overview_utilization", perCaseMetrics));
+                    createWinPercentagePieChart("Overview: Resource Utilization Comparison", "overview_utilization", perCaseMetrics, false));
             savePieChart(dir, "pie_summary_makespan.png",
-                    createAverageMetricPieChart("Average Makespan Share Across Test Runs", "makespan", perCaseMetrics));
+                    createWinPercentagePieChart("Makespan Win Percentage Across Test Runs", "makespan", perCaseMetrics, true));
             savePieChart(dir, "pie_summary_throughput.png",
-                    createAverageMetricPieChart("Average Throughput Share Across Test Runs", "throughput", perCaseMetrics));
+                    createWinPercentagePieChart("Throughput Win Percentage Across Test Runs", "throughput", perCaseMetrics, false));
             savePieChart(dir, "pie_summary_turnaround.png",
-                    createAverageMetricPieChart("Average Turnaround Share Across Test Runs", "turnaround", perCaseMetrics));
+                    createWinPercentagePieChart("Turnaround Win Percentage Across Test Runs", "turnaround", perCaseMetrics, true));
             savePieChart(dir, "pie_summary_load_balance.png",
-                    createAverageMetricPieChart("Average Load Balance Share Across Test Runs", "load", perCaseMetrics));
+                    createWinPercentagePieChart("Load Balance Win Percentage Across Test Runs", "load", perCaseMetrics, true));
             savePieChart(dir, "pie_summary_fairness.png",
-                    createAverageMetricPieChart("Average Fairness Share Across Test Runs", "fairness", perCaseMetrics));
+                    createWinPercentagePieChart("Fairness Win Percentage Across Test Runs", "fairness", perCaseMetrics, false));
             savePieChart(dir, "pie_summary_overloaded_vm.png",
-                    createAverageMetricPieChart("Average Overloaded VM Share Across Test Runs", "overloaded", perCaseMetrics));
+                    createWinPercentagePieChart("Overloaded VM Win Percentage Across Test Runs", "overloaded", perCaseMetrics, true));
 
             JOptionPane.showMessageDialog(this, "Complete pie summary charts exported to results/charts/");
         } catch (IOException e) {
@@ -1530,21 +1552,21 @@ public class ResultsDashboard extends JFrame {
             List<List<PerformanceMetrics>> perCaseMetrics = splitMetricsByCase(collector.getMetricsList());
 
             saveLineChart(dir, "line_summary_overview_performance.png",
-                    createSummaryLineChart("Overview: Comprehensive Performance Comparison", "overview_performance", perCaseMetrics, "Normalized Performance Score"));
+                    createRankingLineChart("Overview: Comprehensive Performance Comparison", "overview_performance", perCaseMetrics, false));
             saveLineChart(dir, "line_summary_overview_utilization.png",
-                    createSummaryLineChart("Overview: Resource Utilization Comparison", "overview_utilization", perCaseMetrics, "Average Utilization (%)"));
+                    createRankingLineChart("Overview: Resource Utilization Comparison", "overview_utilization", perCaseMetrics, false));
             saveLineChart(dir, "line_summary_makespan.png",
-                    createSummaryLineChart("Makespan Across Test Runs", "makespan", perCaseMetrics, "Makespan"));
+                    createRankingLineChart("Makespan Rankings Across Test Runs", "makespan", perCaseMetrics, true));
             saveLineChart(dir, "line_summary_throughput.png",
-                    createSummaryLineChart("Throughput Across Test Runs", "throughput", perCaseMetrics, "Throughput"));
+                    createRankingLineChart("Throughput Rankings Across Test Runs", "throughput", perCaseMetrics, false));
             saveLineChart(dir, "line_summary_turnaround.png",
-                    createSummaryLineChart("Turnaround Across Test Runs", "turnaround", perCaseMetrics, "Turnaround"));
+                    createRankingLineChart("Turnaround Rankings Across Test Runs", "turnaround", perCaseMetrics, true));
             saveLineChart(dir, "line_summary_load_balance.png",
-                    createSummaryLineChart("Load Balance Across Test Runs", "load", perCaseMetrics, "Load Balance"));
+                    createRankingLineChart("Load Balance Rankings Across Test Runs", "load", perCaseMetrics, true));
             saveLineChart(dir, "line_summary_fairness.png",
-                    createSummaryLineChart("Fairness Across Test Runs", "fairness", perCaseMetrics, "Fairness"));
+                    createRankingLineChart("Fairness Rankings Across Test Runs", "fairness", perCaseMetrics, false));
             saveLineChart(dir, "line_summary_overloaded_vm.png",
-                    createSummaryLineChart("Overloaded VM Across Test Runs", "overloaded", perCaseMetrics, "Overloaded VM Count"));
+                    createRankingLineChart("Overloaded VM Rankings Across Test Runs", "overloaded", perCaseMetrics, true));
 
             JOptionPane.showMessageDialog(this, "Complete line summary charts exported to results/charts/");
         } catch (IOException e) {
