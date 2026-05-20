@@ -142,7 +142,7 @@ public class ResultsDashboard extends JFrame {
         ));
         panel.setBackground(Color.WHITE);
 
-        panel.add(createSummaryLabel("Test Cases", String.valueOf(testCases.size())));
+        panel.add(createSummaryLabel("Test Runs", String.valueOf(testCases.size())));
         panel.add(createSummaryLabel("Hosts Range", inputMinHosts + " - " + inputMaxHosts));
         panel.add(createSummaryLabel("VMs Range", inputMinVms + " - " + inputMaxVms));
         panel.add(createSummaryLabel("Cloudlets Range", inputMinCloudlets + " - " + inputMaxCloudlets));
@@ -159,24 +159,21 @@ public class ResultsDashboard extends JFrame {
 
     private JPanel createExportPanel() {
         JPanel panel = new JPanel();
-        panel.setLayout(new GridLayout(4, 1, 8, 8));
+        panel.setLayout(new GridLayout(3, 1, 8, 8));
         panel.setBorder(BorderFactory.createTitledBorder("Exports"));
         panel.setBackground(Color.WHITE);
 
         JButton exportCsvButton = new JButton("Export CSV");
         JButton exportGraphsButton = new JButton("Export Graphs");
         JButton exportPieButton = new JButton("Export Pie Summary");
-        JButton exportLineButton = new JButton("Export Line Summary");
 
         exportCsvButton.addActionListener(e -> exportCsv());
         exportGraphsButton.addActionListener(e -> exportGraphs());
         exportPieButton.addActionListener(e -> exportPieSummaryCharts());
-        exportLineButton.addActionListener(e -> exportLineSummaryCharts());
 
         panel.add(exportCsvButton);
         panel.add(exportGraphsButton);
         panel.add(exportPieButton);
-        panel.add(exportLineButton);
 
         return panel;
     }
@@ -256,7 +253,7 @@ public class ResultsDashboard extends JFrame {
         block.setMaximumSize(new Dimension(Integer.MAX_VALUE, 360));
 
         JLabel header = new JLabel(
-                "Test Case: " + caseNumber +
+                "Test Run: " + caseNumber +
                         "    Hosts: " + testCase[0] +
                         "    VMs: " + testCase[1] +
                         "    Cloudlets: " + testCase[2]
@@ -316,7 +313,6 @@ public class ResultsDashboard extends JFrame {
         panel.add(createChartNavButton("Overloaded VMs", "overloaded"));
         panel.add(createChartNavButton("Utilization", "utilization"));
         panel.add(createChartNavButton("Pie Summary", "pie_summary"));
-        panel.add(createChartNavButton("Line Summary", "line_summary"));
 
         return panel;
     }
@@ -339,8 +335,6 @@ public class ResultsDashboard extends JFrame {
 
         if ("pie_summary".equals(selectedChartType)) {
             content.add(createPieSummaryBlock(perCaseMetrics));
-        } else if ("line_summary".equals(selectedChartType)) {
-            content.add(createLineSummaryBlock(perCaseMetrics));
         } else {
             for (int i = 0; i < testCases.size(); i++) {
                 int[] testCase = testCases.get(i);
@@ -784,7 +778,7 @@ public class ResultsDashboard extends JFrame {
         block.setMaximumSize(new Dimension(Integer.MAX_VALUE, 430));
 
         JLabel header = new JLabel(
-                "Test Case: " + caseNumber +
+                "Test Run: " + caseNumber +
                         "    Hosts: " + testCase[0] +
                         "    VMs: " + testCase[1] +
                         "    Cloudlets: " + testCase[2]
