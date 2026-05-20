@@ -47,7 +47,7 @@ public class SimulatorDashboard extends JFrame {
         JLabel title = new JLabel("Simulation Settings");
         title.setFont(new Font("Segoe UI", Font.BOLD, 22));
 
-        JLabel subtitle = new JLabel("Enter number of test z, ranges, and the Traditional RR time quantum");
+        JLabel subtitle = new JLabel("Enter number of test runs, ranges, and the Traditional RR time quantum");
         subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         subtitle.setForeground(Color.DARK_GRAY);
 
@@ -103,7 +103,7 @@ public class SimulatorDashboard extends JFrame {
 
         gbc.gridx = 0;
         gbc.gridy = row;
-        form.add(new JLabel("Number of Test Cases:"), gbc);
+        form.add(new JLabel("Number of Test Runs:"), gbc);
         gbc.gridx = 1;
         gbc.gridwidth = 2;
         form.add(testCasesField, gbc);
